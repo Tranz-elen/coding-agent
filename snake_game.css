@@ -345,6 +345,63 @@ body {
     }
 }
 
+/* 得分动画 */
+@keyframes scoreFloat {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50px) scale(1.2);
+    }
+}
+
+.score-float {
+    position: absolute;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 100;
+    animation: scoreFloat 1s ease-out forwards;
+}
+
+/* 食物生成动画 */
+@keyframes foodSpawn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.food-spawn {
+    animation: foodSpawn 0.3s ease-out;
+}
+
+/* 蛇身增长动画 */
+@keyframes snakeGrow {
+    0% {
+        transform: scale(0.8);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.snake-grow {
+    animation: snakeGrow 0.2s ease-out;
+}
+
 /* 游戏统计 */
 .game-stats {
     margin-top: 30px;

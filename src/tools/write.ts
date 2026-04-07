@@ -30,6 +30,16 @@ export class FileWriteTool extends BaseTool<WriteInput> {
   };
   
   async execute(input: WriteInput): Promise<{ success: boolean; message: string }> {
+      // 👇 添加大小限制（放在 try 块的最前面）
+    const MAX_FILE_SIZE = 1_000_000;  // 1MB
+  
+   if (input.content.length > MAX_FILE_SIZE) {
+     return {
+      success: false,
+      message: `❌ 安全限制：文件过大 (${input.content.length} 字符)，最大允许 ${MAX_FILE_SIZE} 字符`
+    };
+  }
+
     try {
       const fullPath = path.resolve(process.cwd(), input.file_path);
       

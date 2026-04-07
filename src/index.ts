@@ -1,9 +1,9 @@
 import readline from 'readline';
 import { AgentLoop } from './agent/loop.js';
+import { RateLimiter } from './utils/rateLimit.js';
 
 // 存储命令历史
 const history: string[] = [];
-let currentInput = '';
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -12,9 +12,6 @@ const rl = readline.createInterface({
   historySize: 100,
   removeHistoryDuplicates: true
 });
-
-// 监听历史变化（readline 自带上下箭头，不需要手动实现）
-// 只需要添加 /history 命令即可
 
 async function main() {
   console.log('=================================');
@@ -27,6 +24,10 @@ async function main() {
   console.log('   ⬆ ⬇ 上下箭头查看命令历史');
   console.log('=================================\n');
   
+  const rateLimiter = new RateLimiter();
+  let rateLimited = false;
+  let rateLimitTimer: NodeJS.Timeout | null = null;
+
   const sessionId = process.argv[2];
   const agent = new AgentLoop({ 
     maxIterations: 15,
@@ -35,29 +36,48 @@ async function main() {
   });
   agent.setReadline(rl);
   
-  // 保存命令历史（通过监听 line 事件）
-  rl.on('line', (input) => {
-    const trimmed = input.trim();
-    if (trimmed && !trimmed.startsWith('/')) {
-      // 添加到历史（去重）
-      const index = history.indexOf(trimmed);
-      if (index !== -1) history.splice(index, 1);
-      history.unshift(trimmed);
-      if (history.length > 100) history.pop();
-    }
-  });
-  
   rl.prompt();
   
+  // 只有一个监听器
   rl.on('line', async (line) => {
     const input = line.trim();
     
+    // 1. 退出命令
     if (input === 'exit' || input === 'quit') {
       console.log('再见！');
       rl.close();
       return;
     }
+
+    // 2. 速率限制检查（合并）
+    const isCommand = input.startsWith('/');
+    if (!isCommand && !rateLimiter.checkLimit(sessionId || 'default')) {
+      rateLimited = true;
+      console.log('\n❌ 请求过于频繁（30次/分钟），请等待 60 秒\n');
+      
+      // 暂停 readline，阻止用户输入
+      rl.pause();
+      
+      if (rateLimitTimer) clearTimeout(rateLimitTimer);
+      rateLimitTimer = setTimeout(() => {
+        rateLimited = false;
+        console.log('✅ 限流解除，可以继续使用\n');
+        rl.resume();
+        rl.prompt();
+      }, 60000);
+      
+      return;
+    }
     
+    // 3. 保存命令历史（非命令）
+    if (input && !input.startsWith('/')) {
+      const index = history.indexOf(input);
+      if (index !== -1) history.splice(index, 1);
+      history.unshift(input);
+      if (history.length > 100) history.pop();
+    }
+    
+    // 4. 处理各种命令
     if (input === '/sessions') {
       await agent.listSessions();
       rl.prompt();
@@ -115,6 +135,7 @@ async function main() {
       return;
     }
     
+    // 5. 正常处理
     console.log('\n⏳ 处理中...\n');
     
     try {

@@ -35,6 +35,24 @@ export class FileReadTool extends BaseTool<ReadInput> {
   };
   
   async execute(input: ReadInput): Promise<ToolOutput> {
+    // 敏感文件黑名单
+  const sensitivePatterns = [
+    '.env', '.env.local', '.env.production',
+    '.git/', 'node_modules/',
+    'package-lock.json', 'yarn.lock',
+    '~/.ssh', '~/.aws', '~/.config',
+    '/etc/passwd', '/etc/shadow',
+    'C:\\Windows\\System32\\', 'C:\\Windows\\System\\'
+  ];
+  
+  for (const pattern of sensitivePatterns) {
+    if (input.file_path.includes(pattern)) {
+      return {
+        success: false,
+        message: `❌ 安全限制：禁止读取敏感文件/目录 (${pattern})`
+      };
+    }
+  }
     try {
       const fullPath = path.resolve(process.cwd(), input.file_path);
       

@@ -38,6 +38,33 @@ export class BashTool extends BaseTool<BashInput> {
   };
   
   async execute(input: BashInput): Promise<ToolOutput> {
+      // 限制命令长度（最多 2000 字符）
+    if (input.command.length > 2000) {
+    return {
+      success: false,
+      message: `❌ 安全限制：命令过长 (${input.command.length} 字符)，最大允许 2000 字符`
+      };
+    } 
+
+     // 👇 添加敏感命令检测
+  const sensitiveCommands = [
+    { cmd: /type\s+\.env/i, msg: '禁止读取 .env 文件' },
+    { cmd: /cat\s+\.env/i, msg: '禁止读取 .env 文件' },
+    { cmd: /type\s+\.git/i, msg: '禁止读取 .git 目录' },
+    { cmd: /cat\s+\.git/i, msg: '禁止读取 .git 目录' },
+    { cmd: /type\s+package-lock\.json/i, msg: '禁止读取 package-lock.json' },
+    { cmd: /cat\s+package-lock\.json/i, msg: '禁止读取 package-lock.json' }
+  ];
+
+    for (const { cmd, msg } of sensitiveCommands) {
+    if (cmd.test(input.command)) {
+      return {
+        success: false,
+        message: `❌ 安全限制：${msg}`
+      };
+    }
+  }
+  
     const timeout = input.timeout || 30000;
     
     try {

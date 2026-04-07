@@ -61,14 +61,24 @@ export class ContextCompressor {
     console.log(`   ⚠️ 错误: ${result.keyInfo.errors.length} 个`);
     
     // 构建压缩后的消息
-    return [
-      {
-        role: 'system',
-        content: this.formatSummary(result)
-      },
-      ...recent
-    ];
+     const newMessages: Message[] = [
+    {
+      role: 'system',
+      content: this.formatSummary(result)
+    }
+  ];
+  
+  if (recent.length > 0 && recent[0].role === 'tool') {
+    newMessages.push({
+      role: 'assistant',
+      content: '[继续之前的工具调用]'
+    });
   }
+  
+  newMessages.push(...recent);
+  
+  return newMessages;
+}
   
   // 生成结构化摘要
   private async generateStructuredSummary(messages: Message[]): Promise<CompactResult> {
