@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "tool": "bash",
+      "mode": "allow",
+      "reason": "用户已记住: bash",
+      "createdAt": 1775555613949,
+      "expiresAt": 1776160413949
+    }
+  ],
+  "sessionId": "session_1775555412140_v6xbnm",
+  "updatedAt": 1775555613949
+}

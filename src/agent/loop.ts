@@ -125,6 +125,14 @@ private async saveCurrentSession(): Promise<void> {
   let finalAnswer = '';
   
   while (true) {
+     // 👇 在每次循环开始时检查压缩
+    if (contextCompressor.needsCompression(this.messages)) {
+      console.log('\n📦 上下文过长（循环中检测到），正在压缩...');
+      this.messages = await contextCompressor.compress(this.messages);
+      await this.saveCurrentSession();
+      console.log('✅ 压缩完成，继续处理...\n');
+    }
+    
     
     if (this.config.verbose) {
       console.log(`\n🔄 继续处理...`);

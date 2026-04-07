@@ -16,6 +16,9 @@ export interface CompactResult {
 
 export class ContextCompressor {
   private llm: LLMClient;
+  constructor() {
+    this.llm = new LLMClient();  
+  }
   // 触发压缩的 token 阈值（DeepSeek 64K 窗口的一半）
   private readonly MAX_TOKENS = 32000;
   

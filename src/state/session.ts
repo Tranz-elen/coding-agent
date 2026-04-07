@@ -103,27 +103,53 @@ getSessionInfo(sessionId: string): Session | null {
   }
   
   async saveSession(session: Session): Promise<void> {
-    const filePath = path.join(this.sessionsDir, `${session.id}.json`);
-    await fs.writeFile(filePath, JSON.stringify(session, null, 2), 'utf-8');
-    this.sessions.set(session.id, session);
-  }
+  const filePath = path.join(this.sessionsDir, `${session.id}.json`);
+  // 使用 { encoding: 'utf-8' } 确保正确编码
+  await fs.writeFile(filePath, JSON.stringify(session, null, 2), { encoding: 'utf-8' });
+  this.sessions.set(session.id, session);
+}
   
   async loadSession(sessionId: string): Promise<Session | null> {
-    return this.sessions.get(sessionId) || null;
+  // 先从内存中获取
+  const cached = this.sessions.get(sessionId);
+  if (cached) return cached;
+  
+  // 从文件读取
+  const filePath = path.join(this.sessionsDir, `${sessionId}.json`);
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    const session: Session = JSON.parse(content);
+    session.createdAt = new Date(session.createdAt);
+    session.updatedAt = new Date(session.updatedAt);
+    
+    // 修复乱码名称
+    if (session.name && !session.name.includes('会话') && !session.name.includes('新')) {
+      session.name = '会话';
+    }
+    
+    this.sessions.set(session.id, session);
+    return session;
+  } catch (error) {
+    console.error(`加载会话失败 ${sessionId}:`, error);
+    return null;
   }
+}
   
   async createSession(name: string, initialMessages: Message[] = []): Promise<Session> {
-    const session: Session = {
-      id: this.generateId(),
-      name,
-      messages: initialMessages,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    await this.saveSession(session);
-    this.currentSessionId = session.id;
-    return session;
-  }
+  // 确保名称是有效的中文
+  const safeName = name || '新会话';
+  
+  const session: Session = {
+    id: this.generateId(),
+    name: safeName,
+    messages: initialMessages,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  await this.saveSession(session);
+  this.currentSessionId = session.id;
+  return session;
+}
   
   async updateSession(sessionId: string, messages: Message[]): Promise<void> {
     const session = this.sessions.get(sessionId);
