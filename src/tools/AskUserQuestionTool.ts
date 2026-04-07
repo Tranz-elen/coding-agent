@@ -3,20 +3,14 @@ import readline from 'readline';
 
 interface Question {
   question: string;
-  options?: string[];  // 可选选项
-  default?: string;    // 默认答案
+  options?: string[];
+  default?: string;
 }
 
 interface AskUserInput extends ToolInput {
   questions: Question[];
-  timeout?: number;  // 超时时间（毫秒）
+  timeout?: number;
 }
-
-// 创建独立的 readline 接口用于提问
-const askRl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
 
 export class AskUserQuestionTool extends BaseTool<AskUserInput> {
   name = 'ask_user_question';
@@ -56,6 +50,13 @@ export class AskUserQuestionTool extends BaseTool<AskUserInput> {
     required: ['questions']
   };
   
+  // 设置主 readline（从 AgentLoop 传入）
+  private mainRl: readline.Interface | null = null;
+  
+  setReadline(rl: readline.Interface): void {
+    this.mainRl = rl;
+  }
+  
   async execute(input: AskUserInput): Promise<ToolOutput> {
     const { questions, timeout = 60000 } = input;
     const answers: string[] = [];
@@ -92,43 +93,51 @@ export class AskUserQuestionTool extends BaseTool<AskUserInput> {
       promptText += '\n> ';
       
       const timer = setTimeout(() => {
-        askRl.removeAllListeners('line');
         reject(new Error(`问题 "${question.question}" 超时未回答`));
       }, timeout);
       
-      askRl.question(promptText, (answer) => {
-        clearTimeout(timer);
-        
-        let finalAnswer = answer.trim();
-        
-        // 如果没输入且没有默认值，提示重新输入
-        if (!finalAnswer && !question.default) {
-          console.log('⚠️ 请输入答案：');
-          this.askQuestion(question, index, timeout).then(resolve).catch(reject);
-          return;
-        }
-        
-        // 使用默认值
-        if (!finalAnswer && question.default) {
-          finalAnswer = question.default;
-          console.log(`   使用默认值: ${finalAnswer}`);
-        }
-        
-        // 验证选项
-        if (question.options && question.options.length > 0) {
-          if (!question.options.includes(finalAnswer)) {
-            console.log(`⚠️ 答案必须是以下选项之一: ${question.options.join(', ')}`);
-            this.askQuestion(question, index, timeout).then(resolve).catch(reject);
+      const ask = (rl: readline.Interface) => {
+        rl.question(promptText, (answer) => {
+          clearTimeout(timer);
+          
+          let finalAnswer = answer.trim();
+          
+          if (!finalAnswer && !question.default) {
+            console.log('⚠️ 请输入答案：');
+            ask(rl);
             return;
           }
-        }
-        
-        resolve(finalAnswer);
-      });
+          
+          if (!finalAnswer && question.default) {
+            finalAnswer = question.default;
+            console.log(`   使用默认值: ${finalAnswer}`);
+          }
+          
+          if (question.options && question.options.length > 0) {
+            if (!question.options.includes(finalAnswer)) {
+              console.log(`⚠️ 答案必须是以下选项之一: ${question.options.join(', ')}`);
+              ask(rl);
+              return;
+            }
+          }
+          
+          resolve(finalAnswer);
+        });
+      };
+      
+      if (this.mainRl) {
+        ask(this.mainRl);
+      } else {
+        const tempRl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+        ask(tempRl);
+      }
     });
   }
   
   isReadOnly(): boolean {
-    return true;  // 只读操作，不修改系统
+    return true;
   }
 }

@@ -32,6 +32,10 @@ export class AgentLoop {
   }
   setReadline(rlInstance: readline.Interface): void {
   this.rl = rlInstance;
+  const askTool = this.toolRegistry.get('ask_user_question') as any;
+  if (askTool && askTool.setReadline) {
+    askTool.setReadline(rlInstance);
+  }
 }
   private async addSystemMessage() {
   const systemPrompt = `你是一个专业的编程助手。

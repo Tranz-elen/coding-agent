@@ -22,7 +22,7 @@ export class ToolRegistry {
     this.register(new TodoWriteTool()); 
     this.register(new FileEditTool()); 
     this.register(new AskUserQuestionTool()); 
-     this.register(new WebFetchTool()); 
+    this.register(new WebFetchTool()); 
   }
   
   static getInstance(): ToolRegistry {
