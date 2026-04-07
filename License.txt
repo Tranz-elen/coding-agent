@@ -1,0 +1,26 @@
+
+---
+
+## 📝 可选：`docs/architecture.md`（如果你想深入学习记录）
+
+```markdown
+# 架构设计笔记
+
+## 核心循环（参考 Claude Code）
+- while + needsFollowUp 模式
+- 工具调用后继续循环
+
+## 工具系统
+- 统一 Tool 接口
+- 能力标记（isReadOnly）
+- 工厂函数 buildTool
+
+## 权限系统
+- 工具级别权限（ALLOW/ASK/DENY）
+- 命令级别危险检测
+- 用户确认机制
+
+## 会话管理
+- JSON 文件持久化
+- 会话隔离
+- 支持恢复和切换

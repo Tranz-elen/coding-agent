@@ -1,0 +1,82 @@
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { BaseTool, ToolInput, ToolOutput } from './base.js';
+
+const execAsync = promisify(exec);
+
+interface BashInput extends ToolInput {
+  command: string;
+  timeout?: number;
+}
+
+export class BashTool extends BaseTool<BashInput> {
+  name = 'bash';
+  
+  description = `执行 shell 命令。返回命令的输出（stdout/stderr）。
+  使用场景：
+  - 运行测试、构建命令
+  - git 操作
+  - 安装依赖
+  - 文件操作（ls, cp, mv）
+  注意：避免长时间运行的命令，使用 timeout 参数限制执行时间。
+  
+  ⚠️ 重要：你在 Windows 系统上运行，优先使用 dir 而不是 ls。`;
+  
+  schema = {
+    type: 'object' as const,
+    properties: {
+      command: {
+        type: 'string',
+        description: '要执行的 shell 命令（Windows 使用 dir, 不要用 ls）'
+      },
+      timeout: {
+        type: 'number',
+        description: '超时时间（毫秒），默认 30000'
+      }
+    },
+    required: ['command']
+  };
+  
+  async execute(input: BashInput): Promise<ToolOutput> {
+    const timeout = input.timeout || 30000;
+    
+    try {
+      // 在 Windows 上，将 ls 转换为 dir（可选）
+      let command = input.command;
+      if (process.platform === 'win32' && command.trim() === 'ls') {
+        command = 'dir';
+      } else if (process.platform === 'win32' && command.trim() === 'ls -la') {
+        command = 'dir';
+      }
+      
+      const { stdout, stderr } = await execAsync(command, { 
+        timeout,
+        shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash'
+      });
+      
+      let output = '';
+      if (stdout) output += stdout;
+      if (stderr) output += stderr;
+      if (!output) output = '(无输出)';
+      
+      return {
+        success: true,
+        message: output.trim(),
+        data: { stdout, stderr }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `命令执行失败: ${error.message}`
+      };
+    }
+  }
+  
+  isReadOnly(): boolean {
+    return false;
+  }
+  
+  isConcurrencySafe(): boolean {
+    return false;
+  }
+}

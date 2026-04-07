@@ -1,0 +1,7 @@
+node_modules/
+sessions/
+dist/
+.env
+.tsx-cache/
+*.log
+.DS_Store
