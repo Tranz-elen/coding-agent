@@ -8,6 +8,7 @@ import { TodoWriteTool } from './TodoWriteTool.js';
 import { FileEditTool } from './FileEditTool.js';
 import { AskUserQuestionTool } from './AskUserQuestionTool.js';
 import { WebFetchTool } from './WebFetchTool.js';
+import { WebSearchTool } from './WebSearchTool.js';
 
 export class ToolRegistry {
   private static instance: ToolRegistry | null = null;
@@ -23,6 +24,7 @@ export class ToolRegistry {
     this.register(new FileEditTool()); 
     this.register(new AskUserQuestionTool()); 
     this.register(new WebFetchTool()); 
+    this.register(new WebSearchTool());
   }
   
   static getInstance(): ToolRegistry {
