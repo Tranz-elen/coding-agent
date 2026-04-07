@@ -48,3 +48,19 @@ export const DANGEROUS_PATTERNS = [
   { pattern: /TRUNCATE\s+TABLE/i, level: DangerLevel.CAUTION, message: '清空数据表' },
   { pattern: /sudo/, level: DangerLevel.CAUTION, message: '管理员权限' }
 ];
+
+// 添加持久化权限规则
+export interface PersistedPermissionRule {
+  tool: string;           // 工具名称
+  mode: PermissionMode;   // allow/ask/deny
+  reason?: string;        // 原因
+  createdAt: number;      // 创建时间戳
+  expiresAt?: number;     // 过期时间戳（可选）
+}
+
+// 会话权限状态
+export interface SessionPermissions {
+  rules: PersistedPermissionRule[];
+  sessionId: string;
+  updatedAt: number;
+}

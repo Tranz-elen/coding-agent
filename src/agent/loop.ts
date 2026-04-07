@@ -4,6 +4,7 @@ import { sessionManager, type Session } from '../state/session.js';
 import { permissionChecker } from '../permissions/checker.js';
 import { PermissionMode } from '../permissions/types.js';
 import readline from 'readline';
+import { contextCompressor } from '../services/compact.js';
 
 export interface AgentConfig {
   maxIterations?: number;
@@ -18,6 +19,14 @@ export class AgentLoop {
   private session: Session | null = null;      // 👈 新增
   private sessionId: string | null = null;     // 👈 新增
   private rl: readline.Interface | null = null; 
+
+  private lastToolCallKey: string = '';        // 👈 新增
+  private sameToolCallCount: number = 0;       // 👈 新增
+  private readonly MAX_SAME_CALL = 3;          // 👈 新增
+
+  private lastMessageCount: number = 0;
+  private noProgressCount: number = 0;
+  private readonly MAX_NO_PROGRESS = 5;
   
   constructor(config?: AgentConfig & { sessionId?: string }) {
     this.llm = new LLMClient();
@@ -99,166 +108,239 @@ private async saveCurrentSession(): Promise<void> {
 }
   
   async processUserInput(userInput: string): Promise<string> {
-    this.messages.push({
-      role: 'user',
-      content: userInput
-    });
+  // 在添加新消息之前检查是否需要压缩
+  if (contextCompressor.needsCompression(this.messages)) {
+    console.log('\n📦 上下文过长，正在压缩...');
+    this.messages = await contextCompressor.compress(this.messages);
+    await this.saveCurrentSession();
+    console.log('✅ 压缩完成，继续处理...\n');
+  }
+  
+  this.messages.push({
+    role: 'user',
+    content: userInput
+  });
+  
+  let iteration = 0;
+  let finalAnswer = '';
+  
+  while (true) {
     
-    let iteration = 0;
-    let finalAnswer = '';
+    if (this.config.verbose) {
+      console.log(`\n🔄 继续处理...`);
+    }
     
-    while (iteration < this.config.maxIterations!) {
-      iteration++;
-      
+    const tools = this.toolRegistry.getLLMToolDefinitions();
+    
+    if (this.config.verbose) {
+      console.log('📡 调用 LLM...');
+    }
+    
+    const response = await this.llm.chat(this.messages, tools);
+    
+    if (this.config.verbose) {
+      console.log(`📥 响应类型: ${response.stopReason}`);
+      console.log(`📊 Token 使用: 输入=${response.usage.inputTokens}, 输出=${response.usage.outputTokens}`);
+    }
+    
+    // 没有工具调用，结束
+    if (response.stopReason === 'end_turn') {
+      finalAnswer = response.content;
+      this.messages.push({
+        role: 'assistant',
+        content: response.content
+      });
+      await this.saveCurrentSession();
+      break;
+    } 
+    // 有工具调用
+    else if (response.stopReason === 'tool_use' && response.toolUses) {
       if (this.config.verbose) {
-        console.log(`\n🔄 循环 #${iteration}`);
-      }
-      
-      const tools = this.toolRegistry.getLLMToolDefinitions();
-      
-      if (this.config.verbose) {
-        console.log('📡 调用 LLM...');
-      }
-      
-      const response = await this.llm.chat(this.messages, tools);
-      
-      if (this.config.verbose) {
-        console.log(`📥 响应类型: ${response.stopReason}`);
-        console.log(`📊 Token 使用: 输入=${response.usage.inputTokens}, 输出=${response.usage.outputTokens}`);
-      }
-      
-      if (response.stopReason === 'end_turn') {
-        finalAnswer = response.content;
-        
-        this.messages.push({
-          role: 'assistant',
-          content: response.content
+        console.log(`🔧 执行 ${response.toolUses.length} 个工具:`);
+        response.toolUses.forEach(tool => {
+          console.log(`   - ${tool.name}:`, JSON.stringify(tool.input).slice(0, 100));
         });
-        await this.saveCurrentSession();
-        break;
-      } 
-      else if (response.stopReason === 'tool_use' && response.toolUses) {
-        if (this.config.verbose) {
-          console.log(`🔧 执行 ${response.toolUses.length} 个工具:`);
-          response.toolUses.forEach(tool => {
-            console.log(`   - ${tool.name}:`, JSON.stringify(tool.input).slice(0, 100));
-          });
-        }
-        
-        this.messages.push({
-          role: 'assistant',
-          content: response.toolUses.map(tool => ({
-            type: 'tool_use',
-            id: tool.id,
-            name: tool.name,
-            input: tool.input
-          }))
-        });
-        
-        for (const toolUse of response.toolUses!) {
-          const tool = this.toolRegistry.get(toolUse.name);
-          
-          if (!tool) {
+      }
+      
+      this.messages.push({
+        role: 'assistant',
+        content: response.toolUses.map(tool => ({
+          type: 'tool_use',
+          id: tool.id,
+          name: tool.name,
+          input: tool.input
+        }))
+      });
+      
+      // 执行每个工具
+      for (const toolUse of response.toolUses!) {
+        // 循环检测
+        const toolCallKey = `${toolUse.name}_${JSON.stringify(toolUse.input)}`;
+        if (toolCallKey === this.lastToolCallKey) {
+          this.sameToolCallCount++;
+          if (this.sameToolCallCount >= this.MAX_SAME_CALL) {
+            const errorMsg = `⚠️ 检测到循环调用：工具 "${toolUse.name}" 连续 ${this.MAX_SAME_CALL} 次使用相同参数。请检查任务规划。`;
             this.messages.push({
               role: 'tool',
               content: {
                 tool_use_id: toolUse.id,
-                content: `错误: 工具 "${toolUse.name}" 不存在`,
+                content: errorMsg,
                 is_error: true
               }
             });
-            await this.saveCurrentSession();  
+            return errorMsg;
+          }
+        } else {
+          this.lastToolCallKey = toolCallKey;
+          this.sameToolCallCount = 0;
+        }
+        
+        const tool = this.toolRegistry.get(toolUse.name);
+        
+        if (!tool) {
+          this.messages.push({
+            role: 'tool',
+            content: {
+              tool_use_id: toolUse.id,
+              content: `错误: 工具 "${toolUse.name}" 不存在`,
+              is_error: true
+            }
+          });
+          await this.saveCurrentSession();  
+          continue;
+        }
+        
+        // 权限检查
+        const permission = await permissionChecker.checkPermission(
+          {
+            toolName: toolUse.name,
+            input: toolUse.input
+          },
+          this.sessionId || undefined
+        );
+        
+        if (!permission.allowed) {
+          this.messages.push({
+            role: 'tool',
+            content: {
+              tool_use_id: toolUse.id,
+              content: `⛔ 权限拒绝: ${permission.reason || '操作不被允许'}`,
+              is_error: true
+            }
+          });
+          continue;
+        }
+        
+        if (permission.needConfirm && permission.mode === PermissionMode.ASK) {
+          console.log(`\n⚠️ 需要确认: ${permission.reason || '请确认此操作'}`);
+          console.log(`   工具: ${toolUse.name}`);
+          console.log(`   参数: ${JSON.stringify(toolUse.input, null, 2)}`);
+          console.log(`   选项: y(是) / n(否) / 记住(记住选择)`);
+          
+          const answer = await this.askConfirmation();
+          
+          if (answer === '记住' || answer === 'remember') {
+            await permissionChecker.addPersistedRule(
+              this.sessionId || 'default',
+              toolUse.name,
+              PermissionMode.ALLOW,
+              `用户已记住: ${toolUse.name}`,
+              7 * 24 * 60 * 60 * 1000
+            );
+            console.log(`✅ 已记住 ${toolUse.name}，后续不再询问`);
+            
+            try {
+              const result = await tool.execute(toolUse.input);
+              this.messages.push({
+                role: 'tool',
+                content: {
+                  tool_use_id: toolUse.id,
+                  content: result.message,
+                  is_error: !result.success
+                }
+              });
+              if (this.config.verbose) {
+                console.log(`   ✅ ${toolUse.name}: ${result.message.slice(0, 100)}`);
+              }
+            } catch (error: any) {
+              this.messages.push({
+                role: 'tool',
+                content: {
+                  tool_use_id: toolUse.id,
+                  content: `执行失败: ${error.message}`,
+                  is_error: true
+                }
+              });
+              if (this.config.verbose) {
+                console.log(`   ❌ ${toolUse.name}: ${error.message}`);
+              }
+            }
             continue;
           }
           
-          // 👇 新增：权限检查
-  const permission = await permissionChecker.checkPermission({
-    toolName: toolUse.name,
-    input: toolUse.input
-  });
-  
-  if (!permission.allowed) {
-    this.messages.push({
-      role: 'tool',
-      content: {
-        tool_use_id: toolUse.id,
-        content: `⛔ 权限拒绝: ${permission.reason || '操作不被允许'}`,
-        is_error: true
-      }
-    });
-    continue;
-  }
-  
-  if (permission.needConfirm && permission.mode === PermissionMode.ASK) {
-    console.log(`\n⚠️ 需要确认: ${permission.reason || '请确认此操作'}`);
-    console.log(`   工具: ${toolUse.name}`);
-    console.log(`   参数: ${JSON.stringify(toolUse.input, null, 2)}`);
-    console.log(`   是否继续？(y/n)`);
-    
-    // 等待用户输入
-    const answer = await this.askConfirmation();
-    if (answer !== 'y' && answer !== 'yes') {
-  this.messages.push({
-    role: 'tool',
-    content: {
-      tool_use_id: toolUse.id,
-      content: `❌ 用户已取消操作。请继续其他任务。`,
-      is_error: true
-    }
-  });
-  continue;  // 👈 跳过当前工具，继续处理下一个工具
-}
-}
-    
-    // 可选：添加临时规则，本次会话不再询问
-    // permissionChecker.addTempRule(toolUse.name, PermissionMode.ALLOW, '用户已确认');
-  
-          
-          try {
-            const result = await tool.execute(toolUse.input);
-            
+          if (answer !== 'y' && answer !== 'yes') {
             this.messages.push({
               role: 'tool',
               content: {
                 tool_use_id: toolUse.id,
-                content: result.message,
-                is_error: !result.success
-              }
-            });
-            
-            if (this.config.verbose) {
-              console.log(`   ✅ ${toolUse.name}: ${result.message.slice(0, 100)}`);
-            }
-          } catch (error: any) {
-            this.messages.push({
-              role: 'tool',
-              content: {
-                tool_use_id: toolUse.id,
-                content: `执行失败: ${error.message}`,
+                content: `❌ 用户已取消操作。请继续其他任务。`,
                 is_error: true
               }
             });
-            
-            if (this.config.verbose) {
-              console.log(`   ❌ ${toolUse.name}: ${error.message}`);
-            }
+            continue;
           }
         }
         
-        continue;
+        // 执行工具
+        try {
+          const result = await tool.execute(toolUse.input);
+          this.messages.push({
+            role: 'tool',
+            content: {
+              tool_use_id: toolUse.id,
+              content: result.message,
+              is_error: !result.success
+            }
+          });
+          if (this.config.verbose) {
+            console.log(`   ✅ ${toolUse.name}: ${result.message.slice(0, 100)}`);
+          }
+        } catch (error: any) {
+          this.messages.push({
+            role: 'tool',
+            content: {
+              tool_use_id: toolUse.id,
+              content: `执行失败: ${error.message}`,
+              is_error: true
+            }
+          });
+          if (this.config.verbose) {
+            console.log(`   ❌ ${toolUse.name}: ${error.message}`);
+          }
+        }
       }
-      else {
-        finalAnswer = response.content || "达到最大 token 限制，请继续。";
-        break;
+      
+      // 👇 进展检测：检查消息数量是否增加
+      if (this.messages.length === this.lastMessageCount) {
+        this.noProgressCount++;
+        if (this.noProgressCount >= this.MAX_NO_PROGRESS) {
+          return `⚠️ 长时间无进展（连续 ${this.MAX_NO_PROGRESS} 轮），已停止。请尝试更具体的指令。`;
+        }
+      } else {
+        this.noProgressCount = 0;
+        this.lastMessageCount = this.messages.length;
       }
+      
+      continue;
     }
-    
-    if (iteration >= this.config.maxIterations!) {
-      finalAnswer = "已达到最大循环次数。请简化请求或检查是否有循环调用。";
+    else {
+      finalAnswer = response.content || "达到最大 token 限制，请继续。";
+      break;
     }
-    
-    return finalAnswer;
   }
+  
+  return finalAnswer;
+}
   
   getHistory(): any[] {
     return this.messages;

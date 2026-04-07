@@ -4,17 +4,90 @@ import {
   PermissionRequest, 
   PermissionResult, 
   DangerLevel, 
-  DANGEROUS_PATTERNS
+  DANGEROUS_PATTERNS,
+  PersistedPermissionRule,
+  SessionPermissions
 } from './types.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 export class PermissionChecker {
   private rules: PermissionRule[] = [];
   private tempRules: Map<string, PermissionRule> = new Map(); // 临时规则（会话级别）
-  
+  private persistedRules: Map<string, PersistedPermissionRule[]> = new Map();
+  private permissionsDir: string;
+
   constructor() {
     this.initDefaultRules();
+    this.permissionsDir = path.join(process.cwd(), '.permissions');
+    this.loadPersistedRules();
+  }
+   // 加载持久化的权限规则
+  private async loadPersistedRules(): Promise<void> {
+    try {
+      await fs.mkdir(this.permissionsDir, { recursive: true });
+      const files = await fs.readdir(this.permissionsDir);
+      
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const content = await fs.readFile(path.join(this.permissionsDir, file), 'utf-8');
+          const sessionPerm: SessionPermissions = JSON.parse(content);
+          this.persistedRules.set(sessionPerm.sessionId, sessionPerm.rules);
+        }
+      }
+    } catch (error) {
+      // 忽略加载错误
+    }
   }
   
+    // 保存权限规则到文件
+  private async savePersistedRules(sessionId: string): Promise<void> {
+    const rules = this.persistedRules.get(sessionId) || [];
+    const sessionPerm: SessionPermissions = {
+      rules,
+      sessionId,
+      updatedAt: Date.now()
+    };
+    const filePath = path.join(this.permissionsDir, `${sessionId}.json`);
+    await fs.writeFile(filePath, JSON.stringify(sessionPerm, null, 2));
+  }
+
+    // 添加持久化规则（针对当前会话）
+  async addPersistedRule(
+    sessionId: string, 
+    toolName: string, 
+    mode: PermissionMode, 
+    reason?: string,
+    duration?: number  // 有效期（毫秒），默认永久
+  ): Promise<void> {
+    let rules = this.persistedRules.get(sessionId) || [];
+    
+    // 移除相同工具的旧规则
+    rules = rules.filter(r => r.tool !== toolName);
+    
+    const newRule: PersistedPermissionRule = {
+      tool: toolName,
+      mode,
+      reason,
+      createdAt: Date.now(),
+      expiresAt: duration ? Date.now() + duration : undefined
+    };
+    
+    rules.push(newRule);
+    this.persistedRules.set(sessionId, rules);
+    await this.savePersistedRules(sessionId);
+  }
+  
+  // 获取会话的持久化规则
+  getPersistedRules(sessionId: string): PersistedPermissionRule[] {
+    const rules = this.persistedRules.get(sessionId) || [];
+    const now = Date.now();
+    
+    // 过滤掉过期的规则
+    return rules.filter(r => !r.expiresAt || r.expiresAt > now);
+  }
+
+
   // 初始化默认规则
   private initDefaultRules(): void {
   // 只读工具 - 自动允许
@@ -74,24 +147,54 @@ export class PermissionChecker {
   }
   
   // 检查权限
-  async checkPermission(request: PermissionRequest): Promise<PermissionResult> {
+  async checkPermission(
+    request: PermissionRequest, 
+    sessionId?: string
+  ): Promise<PermissionResult> {
     const { toolName, input } = request;
+
+ // 0. 检查持久化规则（优先）
+    if (sessionId) {
+      const persisted = this.getPersistedRules(sessionId);
+      for (const rule of persisted) {
+        if (this.matchTool(rule.tool, toolName)) {
+          switch (rule.mode) {
+            case PermissionMode.ALLOW:
+              return {
+                allowed: true,
+                mode: rule.mode,
+                reason: `[已记住] ${rule.reason || '您之前已允许'}`,
+                needConfirm: false
+              };
+            case PermissionMode.DENY:
+              return {
+                allowed: false,
+                mode: rule.mode,
+                reason: `[已记住] ${rule.reason || '您之前已拒绝'}`,
+                needConfirm: false
+              };
+            case PermissionMode.ASK:
+              // ASK 规则不跳过确认
+              break;
+          }
+        }
+      }
+    }
     
-    // 1. 先检查危险等级
+     // 1. 检查危险等级
     const dangerLevel = this.checkDangerLevel(toolName, input);
-if (dangerLevel === DangerLevel.DANGEROUS || dangerLevel === DangerLevel.CAUTION) {
-  return {
-    allowed: true,  // 改为 true，允许但需要确认
-    mode: PermissionMode.ASK,
-    reason: `⚠️ ${this.getDangerMessage(input)}`,
-    needConfirm: true
-  };
-}
+    if (dangerLevel === DangerLevel.DANGEROUS) {
+      return {
+        allowed: true,
+        mode: PermissionMode.ASK,
+        reason: `⚠️⚠️⚠️ 危险操作警告！${this.getDangerMessage(input)}`,
+        needConfirm: true
+      };
+    }
     
-    // 2. 匹配规则
+     // 2. 匹配默认规则
     for (const rule of this.rules) {
       if (this.matchTool(rule.tool, toolName)) {
-        // 检查是否过期
         if (rule.expiresAt && rule.expiresAt < new Date()) {
           continue;
         }
@@ -121,6 +224,7 @@ if (dangerLevel === DangerLevel.DANGEROUS || dangerLevel === DangerLevel.CAUTION
         }
       }
     }
+    
     
     // 3. 检查临时规则
     for (const [_, rule] of this.tempRules) {

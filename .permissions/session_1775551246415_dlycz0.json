@@ -1,0 +1,27 @@
+{
+  "rules": [
+    {
+      "tool": "bash",
+      "mode": "allow",
+      "reason": "用户已记住: bash",
+      "createdAt": 1775551283724,
+      "expiresAt": 1776156083724
+    },
+    {
+      "tool": "write_file",
+      "mode": "allow",
+      "reason": "用户已记住: write_file",
+      "createdAt": 1775551394131,
+      "expiresAt": 1776156194131
+    },
+    {
+      "tool": "file_edit",
+      "mode": "allow",
+      "reason": "用户已记住: file_edit",
+      "createdAt": 1775551421650,
+      "expiresAt": 1776156221650
+    }
+  ],
+  "sessionId": "session_1775551246415_dlycz0",
+  "updatedAt": 1775551421650
+}

@@ -1,0 +1,20 @@
+{
+  "rules": [
+    {
+      "tool": "write_file",
+      "mode": "allow",
+      "reason": "用户已记住: write_file",
+      "createdAt": 1775549645563,
+      "expiresAt": 1776154445563
+    },
+    {
+      "tool": "bash",
+      "mode": "allow",
+      "reason": "用户已记住: bash",
+      "createdAt": 1775550053386,
+      "expiresAt": 1776154853386
+    }
+  ],
+  "sessionId": "session_1775549593656_ec7894",
+  "updatedAt": 1775550053386
+}

@@ -1,5 +1,5 @@
 // 消息角色
-export type Role = 'user' | 'assistant' | 'tool';
+export type Role  = 'user' | 'assistant' | 'tool' | 'system';
 
 // 工具调用
 export interface ToolUse {
