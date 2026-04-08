@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "tool": "file_edit",
+      "mode": "allow",
+      "reason": "用户已记住: file_edit",
+      "createdAt": 1775648637158,
+      "expiresAt": 1776253437158
+    }
+  ],
+  "sessionId": "session_1775648539043_h1i7we",
+  "updatedAt": 1775648637158
+}

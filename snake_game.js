@@ -7,7 +7,11 @@ const CONFIG = {
     SPEED_UP_SCORE: 50,
     SOUND_ENABLED: true,
     SPECIAL_FOOD_CHANCE: 0.2, // 20% 几率生成特殊食物
-    SPECIAL_FOOD_DURATION: 10000 // 特殊食物持续时间 10秒
+    SPECIAL_FOOD_DURATION: 10000, // 特殊食物持续时间 10秒
+    OBSTACLE_CHANCE: 0.1, // 10% 几率生成障碍物
+    MAX_OBSTACLES: 5, // 最大障碍物数量
+    POWER_UP_CHANCE: 0.15, // 15% 几率生成道具
+    POWER_UP_DURATION: 8000 // 道具持续时间 8秒
 };
 
 // 难度配置
@@ -78,6 +82,71 @@ const FOOD_TYPES = {
         highlight: '#90ee90',
         score: 30,
         effect: 'shrinkSnake'
+    },
+    shield: {
+        name: '护盾食物',
+        color: '#ff9f43',
+        highlight: '#ffcc8a',
+        score: 25,
+        effect: 'shield'
+    },
+    ghost: {
+        name: '幽灵食物',
+        color: '#a29bfe',
+        highlight: '#d1cdfe',
+        score: 35,
+        effect: 'ghost'
+    }
+};
+
+// 道具类型
+const POWER_UPS = {
+    magnet: {
+        name: '磁铁道具',
+        color: '#ff3838',
+        icon: '🧲',
+        effect: 'magnet',
+        duration: 8000
+    },
+    bomb: {
+        name: '炸弹道具',
+        color: '#ff9f43',
+        icon: '💣',
+        effect: 'bomb',
+        duration: 5000
+    },
+    freeze: {
+        name: '冰冻道具',
+        color: '#00bfff',
+        icon: '❄️',
+        effect: 'freeze',
+        duration: 6000
+    },
+    portal: {
+        name: '传送门道具',
+        color: '#9b59b6',
+        icon: '🌀',
+        effect: 'portal',
+        duration: 10000
+    }
+};
+
+// 障碍物类型
+const OBSTACLES = {
+    rock: {
+        name: '岩石',
+        color: '#7f8c8d',
+        pattern: 'solid'
+    },
+    spike: {
+        name: '尖刺',
+        color: '#e74c3c',
+        pattern: 'spike'
+    },
+    wall: {
+        name: '墙壁',
+        color: '#34495e',
+        pattern: 'wall'
     }
 };
 
@@ -247,6 +316,8 @@ const HighScoreManager = {
 let gameState = {
     snake: [],
     food: { x: 0, y: 0, type: 'normal' },
+    obstacles: [],
+    powerUps: [],
     direction: 'right',
     nextDirection: 'right',
     score: 0,
@@ -262,7 +333,13 @@ let gameState = {
     gameStartTime: 0,
     gameTime: 0,
     specialFoodEaten: 0,
-    currentTheme: 'dark'
+    currentTheme: 'dark',
+    activePowerUps: new Map(),
+    shieldActive: false,
+    ghostActive: false,
+    magnetActive: false,
+    freezeActive: false,
+    portalActive: false
 };
 
 // 音效系统
@@ -457,6 +534,11 @@ function initGame() {
         gameState.specialFoodTimer = null;
     }
     
+    // 清除所有活动道具计时器
+    gameState.activePowerUps.forEach((timer, powerUpId) => {
+        clearTimeout(timer);
+    });
+    
     // 重置游戏状态
     gameState = {
         snake: [
@@ -465,6 +547,8 @@ function initGame() {
             { x: 3, y: 10 }
         ],
         food: { x: 0, y: 0, type: 'normal' },
+        obstacles: [],
+        powerUps: [],
         direction: 'right',
         nextDirection: 'right',
         score: 0,
@@ -480,11 +564,20 @@ function initGame() {
         gameStartTime: 0,
         gameTime: 0,
         specialFoodEaten: 0,
-        currentTheme: gameState.currentTheme
+        currentTheme: gameState.currentTheme,
+        activePowerUps: new Map(),
+        shieldActive: false,
+        ghostActive: false,
+        magnetActive: false,
+        freezeActive: false,
+        portalActive: false
     };
     
     // 生成第一个食物
     generateFood();
+    
+    // 生成初始障碍物
+    generateInitialObstacles();
     
     // 更新UI
     updateUI();
@@ -503,27 +596,53 @@ function generateFood() {
     
     let foodPosition;
     let validPosition = false;
+    let attempts = 0;
+    const maxAttempts = 100;
     
-    // 确保食物不会生成在蛇身上
-    while (!validPosition) {
+    // 确保食物不会生成在蛇身上、障碍物上或道具上
+    while (!validPosition && attempts < maxAttempts) {
         foodPosition = {
             x: Math.floor(Math.random() * gridWidth),
             y: Math.floor(Math.random() * gridHeight)
         };
         
         validPosition = true;
+        
+        // 检查是否在蛇身上
         for (const segment of gameState.snake) {
             if (segment.x === foodPosition.x && segment.y === foodPosition.y) {
                 validPosition = false;
                 break;
             }
         }
+        
+        // 检查是否在障碍物上
+        if (validPosition) {
+            for (const obstacle of gameState.obstacles) {
+                if (obstacle.x === foodPosition.x && obstacle.y === foodPosition.y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        // 检查是否在道具上
+        if (validPosition) {
+            for (const powerUp of gameState.powerUps) {
+                if (powerUp.x === foodPosition.x && powerUp.y === foodPosition.y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        attempts++;
     }
     
     // 确定食物类型
     let foodType = 'normal';
     if (Math.random() < CONFIG.SPECIAL_FOOD_CHANCE) {
-        const specialTypes = ['golden', 'speed', 'slow', 'shrink'];
+        const specialTypes = ['golden', 'speed', 'slow', 'shrink', 'shield', 'ghost'];
         foodType = specialTypes[Math.floor(Math.random() * specialTypes.length)];
         gameState.specialFoodActive = true;
         
@@ -545,6 +664,203 @@ function generateFood() {
     };
 }
 
+// 生成初始障碍物
+function generateInitialObstacles() {
+    const gridWidth = canvas.width / CONFIG.GRID_SIZE;
+    const gridHeight = canvas.height / CONFIG.GRID_SIZE;
+    
+    // 根据难度生成不同数量的障碍物
+    let obstacleCount = 0;
+    switch (gameState.currentDifficulty) {
+        case 'easy':
+            obstacleCount = 2;
+            break;
+        case 'normal':
+            obstacleCount = 3;
+            break;
+        case 'hard':
+            obstacleCount = 4;
+            break;
+        case 'expert':
+            obstacleCount = 5;
+            break;
+    }
+    
+    for (let i = 0; i < obstacleCount; i++) {
+        generateObstacle();
+    }
+}
+
+// 生成障碍物
+function generateObstacle() {
+    if (gameState.obstacles.length >= CONFIG.MAX_OBSTACLES) return;
+    
+    const gridWidth = canvas.width / CONFIG.GRID_SIZE;
+    const gridHeight = canvas.height / CONFIG.GRID_SIZE;
+    
+    let obstaclePosition;
+    let validPosition = false;
+    let attempts = 0;
+    const maxAttempts = 50;
+    
+    // 确保障碍物不会生成在蛇身上、食物上或道具上
+    while (!validPosition && attempts < maxAttempts) {
+        obstaclePosition = {
+            x: Math.floor(Math.random() * gridWidth),
+            y: Math.floor(Math.random() * gridHeight)
+        };
+        
+        validPosition = true;
+        
+        // 检查是否在蛇身上
+        for (const segment of gameState.snake) {
+            if (segment.x === obstaclePosition.x && segment.y === obstaclePosition.y) {
+                validPosition = false;
+                break;
+            }
+        }
+        
+        // 检查是否在食物上
+        if (validPosition) {
+            if (gameState.food.x === obstaclePosition.x && gameState.food.y === obstaclePosition.y) {
+                validPosition = false;
+            }
+        }
+        
+        // 检查是否在道具上
+        if (validPosition) {
+            for (const powerUp of gameState.powerUps) {
+                if (powerUp.x === obstaclePosition.x && powerUp.y === obstaclePosition.y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        // 检查是否在其他障碍物上
+        if (validPosition) {
+            for (const obstacle of gameState.obstacles) {
+                if (obstacle.x === obstaclePosition.x && obstacle.y === obstaclePosition.y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        // 确保障碍物不在起始位置附近
+        if (validPosition) {
+            const startX = 5, startY = 10;
+            const distance = Math.sqrt(
+                Math.pow(obstaclePosition.x - startX, 2) + 
+                Math.pow(obstaclePosition.y - startY, 2)
+            );
+            if (distance < 4) {
+                validPosition = false;
+            }
+        }
+        
+        attempts++;
+    }
+    
+    if (validPosition) {
+        const obstacleTypes = Object.keys(OBSTACLES);
+        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+        
+        gameState.obstacles.push({
+            x: obstaclePosition.x,
+            y: obstaclePosition.y,
+            type: type
+        });
+    }
+}
+
+// 生成道具
+function generatePowerUp() {
+    if (Math.random() > CONFIG.POWER_UP_CHANCE) return;
+    
+    const gridWidth = canvas.width / CONFIG.GRID_SIZE;
+    const gridHeight = canvas.height / CONFIG.GRID_SIZE;
+    
+    let powerUpPosition;
+    let validPosition = false;
+    let attempts = 0;
+    const maxAttempts = 50;
+    
+    // 确保道具不会生成在蛇身上、食物上或障碍物上
+    while (!validPosition && attempts < maxAttempts) {
+        powerUpPosition = {
+            x: Math.floor(Math.random() * gridWidth),
+            y: Math.floor(Math.random() * gridHeight)
+        };
+        
+        validPosition = true;
+        
+        // 检查是否在蛇身上
+        for (const segment of gameState.snake) {
+            if (segment.x === powerUpPosition.x && segment.y === powerUpPosition.y) {
+                validPosition = false;
+                break;
+            }
+        }
+        
+        // 检查是否在食物上
+        if (validPosition) {
+            if (gameState.food.x === powerUpPosition.x && gameState.food.y === powerUpPosition.y) {
+                validPosition = false;
+            }
+        }
+        
+        // 检查是否在障碍物上
+        if (validPosition) {
+            for (const obstacle of gameState.obstacles) {
+                if (obstacle.x === powerUpPosition.x && obstacle.y === powerUpPosition.y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        // 检查是否在其他道具上
+        if (validPosition) {
+            for (const powerUp of gameState.powerUps) {
+                if (powerUp.x === powerUpPosition.x && powerUp.y === powerUpPosition.y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        attempts++;
+    }
+    
+    if (validPosition) {
+        const powerUpTypes = Object.keys(POWER_UPS);
+        const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+        const powerUpId = Date.now() + Math.random();
+        
+        gameState.powerUps.push({
+            id: powerUpId,
+            x: powerUpPosition.x,
+            y: powerUpPosition.y,
+            type: type,
+            createdAt: Date.now()
+        });
+        
+        // 设置道具过期计时器
+        const timer = setTimeout(() => {
+            removePowerUp(powerUpId);
+        }, POWER_UPS[type].duration);
+        
+        gameState.activePowerUps.set(powerUpId, timer);
+    }
+}
+
+// 移除道具
+function removePowerUp(powerUpId) {
+    gameState.powerUps = gameState.powerUps.filter(powerUp => powerUp.id !== powerUpId);
+    gameState.activePowerUps.delete(powerUpId);
+}
+
 // 绘制游戏
 function draw() {
     const time = Date.now() / 1000;
@@ -560,11 +876,20 @@ function draw() {
     // 绘制网格
     drawGrid();
     
+    // 绘制障碍物
+    drawObstacles();
+    
+    // 绘制道具
+    drawPowerUps();
+    
     // 绘制蛇
     drawSnake();
     
     // 绘制食物
     drawFood();
+    
+    // 绘制状态效果
+    drawStatusEffects();
 }
 
 // 绘制星空背景
@@ -910,6 +1235,19 @@ function update() {
         gameState.snake.pop();
     }
     
+    // 检查是否吃到道具
+    checkPowerUpCollision();
+    
+    // 检查磁铁效果
+    if (gameState.magnetActive) {
+        applyMagnetEffect();
+    }
+    
+    // 随机生成道具
+    if (Math.random() < 0.01) { // 1% 的概率每帧生成道具
+        generatePowerUp();
+    }
+    
     // 更新UI
     updateUI();
 }
@@ -919,20 +1257,39 @@ function checkCollision(head) {
     const gridWidth = canvas.width / CONFIG.GRID_SIZE;
     const gridHeight = canvas.height / CONFIG.GRID_SIZE;
     
-    // 检查墙壁碰撞
-    if (
-        head.x < 0 ||
-        head.x >= gridWidth ||
-        head.y < 0 ||
-        head.y >= gridHeight
-    ) {
-        return true;
+    // 检查墙壁碰撞（幽灵模式下可以穿墙）
+    if (!gameState.ghostActive) {
+        if (
+            head.x < 0 ||
+            head.x >= gridWidth ||
+            head.y < 0 ||
+            head.y >= gridHeight
+        ) {
+            return true;
+        }
+    } else {
+        // 幽灵模式：穿墙处理
+        if (head.x < 0) head.x = gridWidth - 1;
+        if (head.x >= gridWidth) head.x = 0;
+        if (head.y < 0) head.y = gridHeight - 1;
+        if (head.y >= gridHeight) head.y = 0;
     }
     
-    // 检查自身碰撞（跳过蛇头）
-    for (let i = 1; i < gameState.snake.length; i++) {
-        if (head.x === gameState.snake[i].x && head.y === gameState.snake[i].y) {
-            return true;
+    // 检查自身碰撞（护盾模式下可以穿过自己）
+    if (!gameState.shieldActive) {
+        for (let i = 1; i < gameState.snake.length; i++) {
+            if (head.x === gameState.snake[i].x && head.y === gameState.snake[i].y) {
+                return true;
+            }
+        }
+    }
+    
+    // 检查障碍物碰撞（幽灵模式下可以穿过障碍物）
+    if (!gameState.ghostActive) {
+        for (const obstacle of gameState.obstacles) {
+            if (head.x === obstacle.x && head.y === obstacle.y) {
+                return true;
+            }
         }
     }
     
@@ -1220,6 +1577,162 @@ function applyFoodEffect(effect) {
                 showEffectMessage('蛇身缩小！');
             }
             break;
+            
+        case 'shield':
+            // 护盾效果
+            gameState.shieldActive = true;
+            showEffectMessage('护盾激活！');
+            setTimeout(() => {
+                gameState.shieldActive = false;
+                showEffectMessage('护盾失效！');
+            }, 10000); // 10秒护盾
+            break;
+            
+        case 'ghost':
+            // 幽灵模式效果
+            gameState.ghostActive = true;
+            showEffectMessage('幽灵模式！');
+            setTimeout(() => {
+                gameState.ghostActive = false;
+                showEffectMessage('幽灵模式结束！');
+            }, 8000); // 8秒幽灵模式
+            break;
+    }
+}
+
+// 检查道具碰撞
+function checkPowerUpCollision() {
+    const head = gameState.snake[0];
+    
+    for (let i = gameState.powerUps.length - 1; i >= 0; i--) {
+        const powerUp = gameState.powerUps[i];
+        
+        if (head.x === powerUp.x && head.y === powerUp.y) {
+            // 播放吃到道具音效
+            SoundManager.play('powerup');
+            
+            // 应用道具效果
+            applyPowerUpEffect(powerUp.type);
+            
+            // 移除道具
+            removePowerUp(powerUp.id);
+            
+            // 显示消息
+            showEffectMessage(`${POWER_UPS[powerUp.type].name}！`);
+            
+            break;
+        }
+    }
+}
+
+// 应用道具效果
+function applyPowerUpEffect(powerUpType) {
+    const powerUp = POWER_UPS[powerUpType];
+    
+    switch (powerUpType) {
+        case 'magnet':
+            // 磁铁效果
+            gameState.magnetActive = true;
+            setTimeout(() => {
+                gameState.magnetActive = false;
+                showEffectMessage('磁铁效果结束！');
+            }, powerUp.duration);
+            break;
+            
+        case 'bomb':
+            // 炸弹效果：清除周围的障碍物
+            const head = gameState.snake[0];
+            gameState.obstacles = gameState.obstacles.filter(obstacle => {
+                const distance = Math.sqrt(
+                    Math.pow(obstacle.x - head.x, 2) + 
+                    Math.pow(obstacle.y - head.y, 2)
+                );
+                return distance > 2; // 保留距离大于2的障碍物
+            });
+            break;
+            
+        case 'freeze':
+            // 冰冻效果
+            gameState.freezeActive = true;
+            const originalSpeed = gameState.speed;
+            gameState.speed = 200; // 大幅降低速度
+            setTimeout(() => {
+                gameState.freezeActive = false;
+                gameState.speed = originalSpeed;
+                showEffectMessage('冰冻效果结束！');
+            }, powerUp.duration);
+            break;
+            
+        case 'portal':
+            // 传送门效果
+            gameState.portalActive = true;
+            // 随机传送蛇头
+            const gridWidth = canvas.width / CONFIG.GRID_SIZE;
+            const gridHeight = canvas.height / CONFIG.GRID_SIZE;
+            
+            let newX, newY;
+            let validPosition = false;
+            let attempts = 0;
+            
+            while (!validPosition && attempts < 50) {
+                newX = Math.floor(Math.random() * gridWidth);
+                newY = Math.floor(Math.random() * gridHeight);
+                
+                validPosition = true;
+                
+                // 检查是否在障碍物上
+                for (const obstacle of gameState.obstacles) {
+                    if (obstacle.x === newX && obstacle.y === newY) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                
+                // 检查是否在蛇身上
+                for (let i = 1; i < gameState.snake.length; i++) {
+                    if (gameState.snake[i].x === newX && gameState.snake[i].y === newY) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                
+                attempts++;
+            }
+            
+            if (validPosition) {
+                gameState.snake[0].x = newX;
+                gameState.snake[0].y = newY;
+            }
+            
+            setTimeout(() => {
+                gameState.portalActive = false;
+                showEffectMessage('传送门效果结束！');
+            }, powerUp.duration);
+            break;
+    }
+}
+
+// 应用磁铁效果
+function applyMagnetEffect() {
+    const head = gameState.snake[0];
+    const magnetRange = 5; // 磁铁范围
+    
+    // 检查食物是否在磁铁范围内
+    const foodDistance = Math.sqrt(
+        Math.pow(gameState.food.x - head.x, 2) + 
+        Math.pow(gameState.food.y - head.y, 2)
+    );
+    
+    if (foodDistance <= magnetRange && foodDistance > 0) {
+        // 将食物向蛇头方向移动
+        const dx = gameState.food.x - head.x;
+        const dy = gameState.food.y - head.y;
+        
+        if (Math.abs(dx) > Math.abs(dy)) {
+            gameState.food.x -= Math.sign(dx);
+        } else {
+            gameState.food.y -= Math.sign(dy);
+        }
     }
 }
 
