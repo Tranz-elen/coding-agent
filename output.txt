@@ -1,0 +1,14 @@
+﻿powershell : 所在位置 行:1 字符: 159
+所在位置 行:1 字符: 1
++ powershell -Command "cd 'D:\AI小说\都市修仙重制版'; $xml = [xml](Get-Content - ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (所在位置 行:1 字符: 159:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
++ ... ;  = '';  = .SelectNodes('//w:t'); for ( = 0;  -lt .Count; ++) {  +=  ...
++                                                                  ~
+一元运算符“++”后面缺少表达式。
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterOperator
+ 
+

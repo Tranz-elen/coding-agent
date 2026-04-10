@@ -85,10 +85,19 @@ export class BashTool extends BaseTool<BashInput> {
       if (stdout) output += stdout;
       if (stderr) output += stderr;
       if (!output) output = '(无输出)';
-      
+      // 👇 新增：输出截断
+      const MAX_OUTPUT_SIZE = 10000;
+      let truncated = false;
+
+      if (output.length > MAX_OUTPUT_SIZE) {
+        output = output.substring(0, MAX_OUTPUT_SIZE) + 
+                `\n\n... (输出过长，已截断，原长度 ${output.length} 字符)`;
+        truncated = true;
+      }
+
       return {
         success: true,
-        message: output.trim(),
+        message: output.trim() + (truncated ? '\n\n⚠️ 输出过长，已截断显示' : ''),
         data: { stdout, stderr }
       };
     } catch (error: any) {

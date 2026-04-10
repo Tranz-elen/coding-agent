@@ -73,7 +73,10 @@ export class FileReadTool extends BaseTool<ReadInput> {
       }
       
       const content = await fs.readFile(fullPath, 'utf-8');
+
+
       const lines = content.split('\n');
+      
       
       let result = content;
       if (input.offset !== undefined || input.limit !== undefined) {
@@ -86,11 +89,23 @@ export class FileReadTool extends BaseTool<ReadInput> {
           .join('\n');
       }
       
+        // 👇 新增：截断逻辑
+      const MAX_OUTPUT_SIZE = 5000;
+      let truncated = false;
+      
+      if (result.length > MAX_OUTPUT_SIZE) {
+        const resultLines = result.split('\n');
+        const head = resultLines.slice(0, 50).join('\n');
+        const tail = resultLines.slice(-20).join('\n');
+        result = `${head}\n\n... (中间省略 ${resultLines.length - 70} 行) ...\n\n${tail}`;
+        truncated = true;
+      }
+      
       return {
         success: true,
-        message: result || '(空文件)'
+        message: result + (truncated ? `\n\n⚠️ 文件过大，已截断显示` : '')
       };
-    } catch (error: any) {
+    }  catch (error: any) {
       return {
         success: false,
         message: `读取失败: ${error.message}`

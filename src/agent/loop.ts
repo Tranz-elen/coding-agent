@@ -460,7 +460,7 @@ getSessionInfo(): { id: string; name: string; messageCount: number } | null {
     messageCount: this.messages.length
   };
  }
- // 列出所有会话
+// 列出所有会话
 async listSessions(): Promise<void> {
   const sessions = sessionManager.listSessions();
   console.log('\n📂 历史会话:');
@@ -468,11 +468,23 @@ async listSessions(): Promise<void> {
     const current = s.id === this.sessionId ? ' (当前)' : '';
     console.log(`  ${s.id.slice(-8)}: ${s.name}${current} - ${s.messages.length}条消息`);
   }
+  console.log('\n💡 提示：使用 /resume <简写ID> 恢复会话');
 }
 
 // 切换会话
 async switchSession(sessionId: string): Promise<boolean> {
-  const session = await sessionManager.loadSession(sessionId);
+  // 1. 先尝试完整 ID 匹配
+  let session = await sessionManager.loadSession(sessionId);
+  
+  // 2. 如果没找到，尝试用简写匹配（后8位）
+  if (!session) {
+    const sessions = sessionManager.listSessions();
+    const match = sessions.find(s => s.id.slice(-8) === sessionId);
+    if (match) {
+      session = match;
+    }
+  }
+  
   if (!session) return false;
   
   this.session = session;

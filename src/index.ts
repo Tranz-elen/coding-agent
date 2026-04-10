@@ -99,6 +99,42 @@ async function main() {
       rl.prompt();
       return;
     }
+
+   if (input === '/chat-history') {
+  const history = agent.getHistory();
+  console.log('\n📜 当前会话消息历史:\n');
+  for (let i = 0; i < history.length; i++) {
+    const msg = history[i];
+    let displayContent = '';
+    
+    if (msg.role === 'user') {
+      displayContent = msg.content;
+    } else if (msg.role === 'assistant') {
+      if (typeof msg.content === 'string') {
+        displayContent = msg.content.slice(0, 200);
+      } else if (Array.isArray(msg.content)) {
+        // 提取工具调用信息
+        const toolNames = msg.content.map((c: any) => c.name).join(', ');
+        displayContent = `[调用工具: ${toolNames}]`;
+      }
+    } else if (msg.role === 'tool') {
+      const result = msg.content.content || msg.content;
+      displayContent = result.slice(0, 150);
+    } else if (msg.role === 'system') {
+      displayContent = msg.content.slice(0, 200);
+    }
+    
+    const roleIcon = msg.role === 'user' ? '👤' : 
+                     msg.role === 'assistant' ? '🤖' : 
+                     msg.role === 'tool' ? '🔧' : '📋';
+    
+    console.log(`${i + 1}. ${roleIcon} [${msg.role}]`);
+    console.log(`   ${displayContent}\n`);
+  }
+  console.log(`📊 总计: ${history.length} 条消息`);
+  rl.prompt();
+  return;
+}
     
     if (input.startsWith('/resume ')) {
       const id = input.slice(8).trim();
