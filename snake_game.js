@@ -314,7 +314,11 @@ const HighScoreManager = {
 
 // 游戏状态
 let gameState = {
-    snake: [],
+    snake: [
+        { x: 5, y: 10 },
+        { x: 4, y: 10 },
+        { x: 3, y: 10 }
+    ],
     food: { x: 0, y: 0, type: 'normal' },
     obstacles: [],
     powerUps: [],
@@ -582,11 +586,11 @@ function initGame() {
     // 更新UI
     updateUI();
     
-    // 绘制初始状态
-    draw();
-    
     // 显示开始界面
     showOverlay('贪吃蛇游戏', '点击"开始游戏"按钮开始');
+    
+    // 绘制初始状态
+    draw();
 }
 
 // 生成食物
@@ -863,6 +867,9 @@ function removePowerUp(powerUpId) {
 
 // 绘制游戏
 function draw() {
+    console.log('draw() called, canvas size:', canvas.width, 'x', canvas.height);
+    console.log('gameState.snake:', gameState.snake);
+    
     const time = Date.now() / 1000;
     
     // 动态背景颜色
@@ -877,10 +884,10 @@ function draw() {
     drawGrid();
     
     // 绘制障碍物
-    drawObstacles();
+    // drawObstacles(); // 暂时注释掉，函数未定义
     
     // 绘制道具
-    drawPowerUps();
+    // drawPowerUps(); // 暂时注释掉，函数未定义
     
     // 绘制蛇
     drawSnake();
@@ -889,7 +896,7 @@ function draw() {
     drawFood();
     
     // 绘制状态效果
-    drawStatusEffects();
+    // drawStatusEffects(); // 暂时注释掉，函数未定义
 }
 
 // 绘制星空背景
@@ -972,9 +979,12 @@ function drawGrid() {
 
 // 绘制蛇
 function drawSnake() {
+    console.log('drawSnake() called, snake length:', gameState.snake.length);
+    
     const time = Date.now() / 1000;
     
     gameState.snake.forEach((segment, index) => {
+        console.log(`Segment ${index}: x=${segment.x}, y=${segment.y}`);
         const x = segment.x * CONFIG.GRID_SIZE;
         const y = segment.y * CONFIG.GRID_SIZE;
         const size = CONFIG.GRID_SIZE;
@@ -986,7 +996,7 @@ function drawSnake() {
             const headSize = size * pulse;
             const offset = (size - headSize) / 2;
             
-            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--theme-snake-head').trim();
+            ctx.fillStyle = '#00dbde'; // 默认蛇头颜色
             ctx.fillRect(
                 x + offset,
                 y + offset,
@@ -1072,7 +1082,7 @@ function drawSnake() {
             const waveOffset = Math.sin(time * 5 + index * 0.5) * 2;
             
             // 蛇身主体
-            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--theme-snake-body').trim();
+            ctx.fillStyle = '#4cd137'; // 默认蛇身颜色
             ctx.fillRect(
                 x + waveOffset,
                 y + waveOffset,
@@ -2081,7 +2091,10 @@ loadThemeSettings();
 addTouchControls();
 
 // 初始化游戏
-initGame();
+setTimeout(() => {
+    initGame();
+    draw(); // 确保初始绘制
+}, 100);
 
 // 初始化统计显示
 updateStatsDisplay();

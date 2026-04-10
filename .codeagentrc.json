@@ -3,7 +3,7 @@
   "maxTokens": 4096,
   "temperature": 0.7,
   "maxIterations": 50,
-  "verbose": true,
+  "verbose": false,
   "maxOutputSize": {
     "read_file": 5000,
     "bash": 10000

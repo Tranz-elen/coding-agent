@@ -3,6 +3,7 @@ import path from 'path';
 import { BaseTool, ToolInput, ToolOutput } from './base.js';
 import { loadConfig } from '../utils/config.js';
 const CONFIG = loadConfig();  // 👈 在文件顶部加载一次
+import { fileCache } from '../services/fileCache.js';
 
 interface ReadInput extends ToolInput {
   file_path: string;
@@ -37,8 +38,7 @@ export class FileReadTool extends BaseTool<ReadInput> {
   };
   
   async execute(input: ReadInput): Promise<ToolOutput> {
-    const config = loadConfig();
-    const MAX_OUTPUT_SIZE = config.maxOutputSize.read_file;
+   const MAX_OUTPUT_SIZE = CONFIG.maxOutputSize.read_file;
     // 敏感文件黑名单
   const sensitivePatterns = [
     '.env', '.env.local', '.env.production',
@@ -80,8 +80,15 @@ export class FileReadTool extends BaseTool<ReadInput> {
 
 
       const lines = content.split('\n');
-      
-      
+
+      // 👇 添加 offset 超限保护
+    if (input.offset !== undefined && input.offset >= lines.length) {
+    return {
+    success: false,
+    message: `❌ offset ${input.offset} 超出文件总行数 ${lines.length}`
+      };
+    }
+          
       let result = content;
       if (input.offset !== undefined || input.limit !== undefined) {
         const start = input.offset || 0;
@@ -93,8 +100,8 @@ export class FileReadTool extends BaseTool<ReadInput> {
           .join('\n');
       }
       
-        // 👇 新增：截断逻辑
-      const MAX_OUTPUT_SIZE = 5000;
+        // 👇 删除这行，因为上面已经定义了
+// const MAX_OUTPUT_SIZE = CONFIG.maxOutputSize.read_file;
       let truncated = false;
       
       if (result.length > MAX_OUTPUT_SIZE) {
@@ -103,6 +110,12 @@ export class FileReadTool extends BaseTool<ReadInput> {
         const tail = resultLines.slice(-20).join('\n');
         result = `${head}\n\n... (中间省略 ${resultLines.length - 70} 行) ...\n\n${tail}`;
         truncated = true;
+      }
+      
+      // 👇 缓存文件内容（只缓存未截断的完整内容）
+      if (result && !truncated) {
+        const messageId = `read_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        fileCache.set(input.file_path, result, messageId);
       }
       
       return {

@@ -6,6 +6,7 @@ import { PermissionMode } from '../permissions/types.js';
 import readline from 'readline';
 import { contextCompressor } from '../services/compact.js';
 import { loadConfig } from '../utils/config.js'
+import { fileCache } from '../services/fileCache.js';
 
 export interface AgentConfig {
   maxIterations?: number;
@@ -41,6 +42,8 @@ export class AgentLoop {
     
     this.sessionId = config?.sessionId || null;
     this.initSession(this.sessionId);
+    // 👇 添加：清理过期缓存
+    fileCache.cleanExpired();
   }
   setReadline(rlInstance: readline.Interface): void {
   this.rl = rlInstance;
@@ -58,13 +61,29 @@ ${this.toolRegistry.getAll().map(tool =>
 ).join('\n')}
 
 ## 重要规则
+1.**问题诊断与修复（强制规则）**：当用户报告程序出问题（如"不工作了"、"有bug"、"不见了"、"出问题了"）时，你必须按以下步骤执行：
 
-1. **直接响应**：用户说"执行 X"时，直接调用 bash 执行，不要先探索
-2. **Todo 列表**：当任务需要 3 个以上步骤时，先用 todo_write 创建任务列表
-3. **Windows 环境**：使用 dir 而不是 ls
-4. 当用户取消某个操作时，继续处理其他任务
-5. 不要因为一个操作被取消而完全停止
-6. 直接回复用户操作结果
+   步骤1：用 read_file 完整读取相关文件（不加 offset/limit）
+   步骤2：分析问题原因
+   步骤3：**必须立即用 file_edit 修复**，不要只给建议
+   步骤4：修复完成后回复："已修复：具体改了xxx"
+   
+   **禁止行为**：
+   - 禁止只分析问题不给修复
+   - 禁止执行 grep 探索性命令
+   - 禁止分块读取文件（offset/limit）
+   - 禁止执行 dir/ls 查看目录
+   
+   **示例**：
+   用户："贪吃蛇不见了"
+   正确做法：read_file → 发现问题 → file_edit 修复 → 回复"已修复"
+   错误做法：grep → read_file 分块 → 分析 → 只给建议
+2. **直接响应**：用户说"执行 X"时，直接调用 bash 执行，不要先探索
+3. **Todo 列表**：当任务需要 3 个以上步骤时，先用 todo_write 创建任务列表
+4. **Windows 环境**：使用 dir 而不是 ls
+5. 当用户取消某个操作时，继续处理其他任务
+6. 不要因为一个操作被取消而完全停止
+7. 直接回复用户操作结果
 
 ## Todo 使用示例
 
