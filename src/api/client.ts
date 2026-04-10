@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import 'dotenv/config';
 
+
 export interface LLMConfig {
   model: string;
   maxTokens: number;
@@ -36,14 +37,18 @@ export class LLMClient {
   }
   
   async chat(
-    messages: any[],
-    tools?: any[]
-  ): Promise<{
-    content: string;
-    stopReason: 'end_turn' | 'tool_use' | 'max_tokens';
-    toolUses?: Array<{ id: string; name: string; input: any }>;
-    usage: { inputTokens: number; outputTokens: number };
-  }> {
+  messages: any[],
+  tools?: any[],
+  retries: number = 3  // 👈 添加重试次数参数
+): Promise<{
+  content: string;
+  stopReason: 'end_turn' | 'tool_use' | 'max_tokens';
+  toolUses?: Array<{ id: string; name: string; input: any }>;
+  usage: { inputTokens: number; outputTokens: number };
+}> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const openAIMessages = this.convertToOpenAIFormat(messages);
       
@@ -61,6 +66,7 @@ export class LLMClient {
       
       const response = await this.client.chat.completions.create(requestParams);
       
+      // 解析响应（原有代码）
       const message = response.choices[0]?.message;
       const finishReason = response.choices[0]?.finish_reason;
       
@@ -100,11 +106,36 @@ export class LLMClient {
           outputTokens: response.usage?.completion_tokens || 0
         }
       };
-    } catch (error) {
-      console.error('LLM API 错误:', error);
-      throw error;
+    } catch (error: any) {
+      lastError = error;
+      
+      // 判断是否值得重试
+      const isRetryable = 
+        error.message?.includes('ECONNRESET') ||
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('ENOTFOUND') ||      // 👈 新增：DNS 解析失败
+        error.message?.includes('getaddrinfo') ||    // 👈 新增：DNS 解析失败
+        error.message?.includes('rate_limit') ||
+        error.cause?.code === 'ENOTFOUND' ||           // 👈 新增：检查 cause 链
+        error.cause?.code === 'ECONNRESET' ||          // 👈 新增
+        error.cause?.code === 'ETIMEDOUT' ||           // 👈 新增
+        error.status === 429 ||
+        error.status === 500 ||
+        error.status === 502 ||
+        error.status === 503;
+      
+      if (!isRetryable || attempt === retries) {
+        throw error;
+      }
+      
+      const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+      console.log(`\n⚠️ API 调用失败 (${error.cause?.code || error.message})，${waitTime/1000} 秒后重试... (${attempt}/${retries})`);
+      await new Promise(r => setTimeout(r, waitTime));
     }
   }
+  
+  throw lastError;
+}
   
   private convertToOpenAIFormat(messages: any[]): any[] {
   const result: any[] = [];
