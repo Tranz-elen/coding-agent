@@ -1,5 +1,8 @@
 import { LLMClient } from '../api/client.js';
 import { Message } from '../agent/types.js';
+import { loadConfig } from '../utils/config.js';
+
+const CONFIG = loadConfig();
 
 export interface CompactResult {
   summary: string;
@@ -16,16 +19,16 @@ export interface CompactResult {
 
 export class ContextCompressor {
   private llm: LLMClient;
-  constructor() {
-    this.llm = new LLMClient();  
-  }
-  // 触发压缩的 token 阈值（DeepSeek 64K 窗口的一半）
-  private readonly MAX_TOKENS = 50000;
-  
+  private MAX_TOKENS: number;
+  private KEEP_RECENT: number;
 
-  // 保留最近的消息数量
-  private readonly KEEP_RECENT = 8;    // 保留最近 8 条消息
-  
+  constructor() {
+    this.llm = new LLMClient();
+    // 从配置文件读取
+    this.MAX_TOKENS = CONFIG.compress.maxTokens;
+    this.KEEP_RECENT = CONFIG.compress.keepRecent;
+  }
+
   // 估算 token 数（中英文混合约 2 字符/token）
   private estimateTokenCount(messages: Message[]): number {
     const json = JSON.stringify(messages);
@@ -46,34 +49,34 @@ export class ContextCompressor {
   
   // 执行压缩
   async compress(messages: Message[]): Promise<Message[]> {
-  const toCompress = messages.slice(0, -this.KEEP_RECENT);
-  let recent = messages.slice(-this.KEEP_RECENT);  // 👈 const 改为 let
-  
-  console.log(`📦 开始压缩上下文: ${toCompress.length} 条消息 → 摘要`);
-  
-  // 如果最近消息以 tool 开头，需要保留对应的 assistant 消息
-  if (recent.length > 0 && recent[0].role === 'tool') {
-    for (let i = messages.length - this.KEEP_RECENT - 1; i >= 0; i--) {
-      if (messages[i].role === 'assistant') {
-        recent = [messages[i], ...recent];
-        break;
+    const toCompress = messages.slice(0, -this.KEEP_RECENT);
+    let recent = messages.slice(-this.KEEP_RECENT);
+    
+    console.log(`📦 开始压缩上下文: ${toCompress.length} 条消息 → 摘要`);
+    
+    // 如果最近消息以 tool 开头，需要保留对应的 assistant 消息
+    if (recent.length > 0 && recent[0].role === 'tool') {
+      for (let i = messages.length - this.KEEP_RECENT - 1; i >= 0; i--) {
+        if (messages[i].role === 'assistant') {
+          recent = [messages[i], ...recent];
+          break;
+        }
       }
     }
+    
+    // 生成结构化摘要
+    const result = await this.generateStructuredSummary(toCompress);
+    
+    console.log(`✅ 压缩完成: 保留关键信息`);
+    
+    return [
+      {
+        role: 'system',
+        content: this.formatSummary(result)
+      },
+      ...recent
+    ];
   }
-  
-  // 生成结构化摘要（只调用一次）
-  const result = await this.generateStructuredSummary(toCompress);
-  
-  console.log(`✅ 压缩完成: 保留关键信息`);
-  
-  return [
-    {
-      role: 'system',
-      content: this.formatSummary(result)
-    },
-    ...recent
-  ];
-}
   
   // 生成结构化摘要
   private async generateStructuredSummary(messages: Message[]): Promise<CompactResult> {
@@ -122,7 +125,6 @@ ${JSON.stringify(messages, null, 2)}
       decisions: [] as string[]
     };
     
-    // 解析各个部分
     const sections = [
       { name: '已完成工作', target: 'completedWork' },
       { name: '当前状态', target: 'currentStatus' },

@@ -1,6 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { BaseTool, ToolInput, ToolOutput } from './base.js';
+import { loadConfig } from '../utils/config.js';
+const CONFIG = loadConfig();  // 👈 在文件顶部加载一次
 
 interface ReadInput extends ToolInput {
   file_path: string;
@@ -35,6 +37,8 @@ export class FileReadTool extends BaseTool<ReadInput> {
   };
   
   async execute(input: ReadInput): Promise<ToolOutput> {
+    const config = loadConfig();
+    const MAX_OUTPUT_SIZE = config.maxOutputSize.read_file;
     // 敏感文件黑名单
   const sensitivePatterns = [
     '.env', '.env.local', '.env.production',

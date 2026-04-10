@@ -5,6 +5,7 @@ import { permissionChecker } from '../permissions/checker.js';
 import { PermissionMode } from '../permissions/types.js';
 import readline from 'readline';
 import { contextCompressor } from '../services/compact.js';
+import { loadConfig } from '../utils/config.js'
 
 export interface AgentConfig {
   maxIterations?: number;
@@ -31,9 +32,11 @@ export class AgentLoop {
   constructor(config?: AgentConfig & { sessionId?: string }) {
     this.llm = new LLMClient();
     this.toolRegistry = ToolRegistry.getInstance();
+    const fileConfig = loadConfig();
+    
     this.config = {
-      maxIterations: config?.maxIterations || 20,
-      verbose: config?.verbose || false
+      maxIterations: config?.maxIterations ?? fileConfig.maxIterations,
+      verbose: config?.verbose ?? fileConfig.verbose
     };
     
     this.sessionId = config?.sessionId || null;

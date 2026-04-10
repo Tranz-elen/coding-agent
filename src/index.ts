@@ -1,6 +1,7 @@
 import readline from 'readline';
 import { AgentLoop } from './agent/loop.js';
 import { RateLimiter } from './utils/rateLimit.js';
+import { loadConfig } from './utils/config.js';
 
 // 存储命令历史
 const history: string[] = [];
@@ -14,8 +15,11 @@ const rl = readline.createInterface({
 });
 
 async function main() {
+  const config = loadConfig();
+  
   console.log('=================================');
   console.log('   Coding Agent - 阶段 5');
+  console.log(`   模型: ${config.model}`);
   console.log('   输入 "exit" 或 "quit" 退出');
   console.log('   输入 "/sessions" 查看历史会话');
   console.log('   输入 "/resume <id>" 恢复会话');
@@ -24,7 +28,10 @@ async function main() {
   console.log('   ⬆ ⬇ 上下箭头查看命令历史');
   console.log('=================================\n');
   
-  const rateLimiter = new RateLimiter();
+  const rateLimiter = new RateLimiter(
+    config.rateLimit.maxRequests,
+    config.rateLimit.windowMs
+  );
   let rateLimited = false;
   let rateLimitTimer: NodeJS.Timeout | null = null;
 

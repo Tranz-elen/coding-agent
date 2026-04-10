@@ -1,6 +1,8 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { BaseTool, ToolInput, ToolOutput } from './base.js';
+import { loadConfig } from '../utils/config.js';
+const CONFIG = loadConfig();  // 👈 在文件顶部加载一次
 
 const execAsync = promisify(exec);
 
@@ -38,6 +40,8 @@ export class BashTool extends BaseTool<BashInput> {
   };
   
   async execute(input: BashInput): Promise<ToolOutput> {
+    const config = loadConfig();
+    const MAX_OUTPUT_SIZE = config.maxOutputSize.bash;
       // 限制命令长度（最多 2000 字符）
     if (input.command.length > 2000) {
     return {
