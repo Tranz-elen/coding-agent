@@ -128,6 +128,34 @@ const POWER_UPS = {
         icon: '🌀',
         effect: 'portal',
         duration: 10000
+    },
+    timeStop: {
+        name: '时间停止道具',
+        color: '#3498db',
+        icon: '⏱️',
+        effect: 'timeStop',
+        duration: 5000
+    },
+    clone: {
+        name: '分身道具',
+        color: '#e74c3c',
+        icon: '👥',
+        effect: 'clone',
+        duration: 8000
+    },
+    scoreMultiplier: {
+        name: '分数倍增道具',
+        color: '#f1c40f',
+        icon: '💰',
+        effect: 'scoreMultiplier',
+        duration: 10000
+    },
+    invincible: {
+        name: '无敌道具',
+        color: '#2ecc71',
+        icon: '🛡️',
+        effect: 'invincible',
+        duration: 7000
     }
 };
 
@@ -343,7 +371,14 @@ let gameState = {
     ghostActive: false,
     magnetActive: false,
     freezeActive: false,
-    portalActive: false
+    portalActive: false,
+    timeStopActive: false,
+    cloneActive: false,
+    cloneSnake: null,
+    cloneTimer: null,
+    scoreMultiplierActive: false,
+    scoreMultiplier: 1,
+    invincibleActive: false
 };
 
 // 音效系统
@@ -867,7 +902,7 @@ function removePowerUp(powerUpId) {
 
 // 绘制游戏
 function draw() {
-    console.log('draw() called, canvas size:', canvas.width, 'x', canvas.height);
+    // console.log('draw() called, canvas size:', canvas.width, 'x', canvas.height);
     console.log('gameState.snake:', gameState.snake);
     
     const time = Date.now() / 1000;
@@ -979,12 +1014,12 @@ function drawGrid() {
 
 // 绘制蛇
 function drawSnake() {
-    console.log('drawSnake() called, snake length:', gameState.snake.length);
+    // console.log('drawSnake() called, snake length:', gameState.snake.length);
     
     const time = Date.now() / 1000;
     
     gameState.snake.forEach((segment, index) => {
-        console.log(`Segment ${index}: x=${segment.x}, y=${segment.y}`);
+        // console.log(`Segment ${index}: x=${segment.x}, y=${segment.y}`);
         const x = segment.x * CONFIG.GRID_SIZE;
         const y = segment.y * CONFIG.GRID_SIZE;
         const size = CONFIG.GRID_SIZE;
@@ -1114,6 +1149,150 @@ function drawSnake() {
             }
         }
     });
+    
+    // 绘制分身蛇（如果存在）
+    if (gameState.cloneActive && gameState.cloneSnake) {
+        drawCloneSnake();
+    }
+}
+
+// 绘制分身蛇
+function drawCloneSnake() {
+    // console.log('drawCloneSnake() called, clone snake length:', gameState.cloneSnake.length);
+    
+    const time = Date.now() / 1000;
+    
+    gameState.cloneSnake.forEach((segment, index) => {
+        // console.log(`Clone segment ${index}: x=${segment.x}, y=${segment.y}`);
+        const x = segment.x * CONFIG.GRID_SIZE;
+        const y = segment.y * CONFIG.GRID_SIZE;
+        const size = CONFIG.GRID_SIZE;
+        
+        // 分身蛇头
+        if (index === 0) {
+            // 分身蛇头呼吸动画
+            const pulse = Math.sin(time * 3) * 0.1 + 0.9;
+            const headSize = size * pulse;
+            const offset = (size - headSize) / 2;
+            
+            ctx.fillStyle = '#e74c3c'; // 分身蛇头颜色
+            ctx.fillRect(
+                x + offset,
+                y + offset,
+                headSize,
+                headSize
+            );
+            
+            // 分身蛇头眼睛
+            ctx.fillStyle = '#ffffff';
+            const eyeSize = size / 5;
+            const eyeOffset = size / 3;
+            
+            // 根据方向绘制眼睛
+            if (gameState.direction === 'right') {
+                ctx.fillRect(
+                    x + size - eyeOffset,
+                    y + eyeOffset,
+                    eyeSize,
+                    eyeSize
+                );
+                ctx.fillRect(
+                    x + size - eyeOffset,
+                    y + size - eyeOffset - eyeSize,
+                    eyeSize,
+                    eyeSize
+                );
+            } else if (gameState.direction === 'left') {
+                ctx.fillRect(
+                    x + eyeOffset - eyeSize,
+                    y + eyeOffset,
+                    eyeSize,
+                    eyeSize
+                );
+                ctx.fillRect(
+                    x + eyeOffset - eyeSize,
+                    y + size - eyeOffset - eyeSize,
+                    eyeSize,
+                    eyeSize
+                );
+            } else if (gameState.direction === 'up') {
+                ctx.fillRect(
+                    x + eyeOffset,
+                    y + eyeOffset - eyeSize,
+                    eyeSize,
+                    eyeSize
+                );
+                ctx.fillRect(
+                    x + size - eyeOffset - eyeSize,
+                    y + eyeOffset - eyeSize,
+                    eyeSize,
+                    eyeSize
+                );
+            } else if (gameState.direction === 'down') {
+                ctx.fillRect(
+                    x + eyeOffset,
+                    y + size - eyeOffset,
+                    eyeSize,
+                    eyeSize
+                );
+                ctx.fillRect(
+                    x + size - eyeOffset - eyeSize,
+                    y + size - eyeOffset,
+                    eyeSize,
+                    eyeSize
+                );
+            }
+            
+            // 分身蛇头光泽效果
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(
+                x + size * 0.3,
+                y + size * 0.3,
+                size * 0.15,
+                size * 0.1,
+                0,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        } else {
+            // 分身蛇身波浪动画
+            const waveOffset = Math.sin(time * 5 + index * 0.5) * 2;
+            
+            // 分身蛇身主体
+            ctx.fillStyle = '#ff7979'; // 分身蛇身颜色
+            ctx.fillRect(
+                x + waveOffset,
+                y + waveOffset,
+                size - waveOffset * 2,
+                size - waveOffset * 2
+            );
+            
+            // 分身蛇身内部细节
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.fillRect(
+                x + 2 + waveOffset,
+                y + 2 + waveOffset,
+                size - 4 - waveOffset * 2,
+                size - 4 - waveOffset * 2
+            );
+            
+            // 分身蛇身鳞片效果
+            if (index % 2 === 0) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.beginPath();
+                ctx.arc(
+                    x + size / 2 + waveOffset,
+                    y + size / 2 + waveOffset,
+                    size / 4,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+    });
 }
 
 // 绘制食物
@@ -1194,8 +1373,9 @@ function update() {
     SoundManager.play('move');
     
     // 检查碰撞
-    if (checkCollision(head)) {
-        gameOver();
+    const collisionType = checkCollision(head);
+    if (collisionType) {
+        gameOver(collisionType);
         return;
     }
     
@@ -1230,8 +1410,9 @@ function update() {
             gameState.specialFoodActive = false;
         }
         
-        // 增加分数
-        gameState.score += scoreToAdd;
+        // 增加分数（应用分数倍增效果）
+        const finalScore = scoreToAdd * gameState.scoreMultiplier;
+        gameState.score += finalScore;
         
         // 根据难度配置增加速度
         if (gameState.score % gameState.difficultyConfig.speedUpScore === 0) {
@@ -1262,20 +1443,24 @@ function update() {
     updateUI();
 }
 
-// 检查碰撞
+// 检查碰撞，返回碰撞类型或false
 function checkCollision(head) {
     const gridWidth = canvas.width / CONFIG.GRID_SIZE;
     const gridHeight = canvas.height / CONFIG.GRID_SIZE;
     
     // 检查墙壁碰撞（幽灵模式下可以穿墙）
     if (!gameState.ghostActive) {
-        if (
-            head.x < 0 ||
-            head.x >= gridWidth ||
-            head.y < 0 ||
-            head.y >= gridHeight
-        ) {
-            return true;
+        if (head.x < 0) {
+            return 'wall_left';
+        }
+        if (head.x >= gridWidth) {
+            return 'wall_right';
+        }
+        if (head.y < 0) {
+            return 'wall_top';
+        }
+        if (head.y >= gridHeight) {
+            return 'wall_bottom';
         }
     } else {
         // 幽灵模式：穿墙处理
@@ -1285,20 +1470,30 @@ function checkCollision(head) {
         if (head.y >= gridHeight) head.y = 0;
     }
     
-    // 检查自身碰撞（护盾模式下可以穿过自己）
-    if (!gameState.shieldActive) {
+    // 检查自身碰撞（护盾模式或无敌模式下可以穿过自己）
+    if (!gameState.shieldActive && !gameState.invincibleActive) {
         for (let i = 1; i < gameState.snake.length; i++) {
             if (head.x === gameState.snake[i].x && head.y === gameState.snake[i].y) {
-                return true;
+                return 'self';
             }
         }
     }
     
-    // 检查障碍物碰撞（幽灵模式下可以穿过障碍物）
-    if (!gameState.ghostActive) {
+    // 检查分身蛇碰撞（如果分身蛇存在，护盾模式或无敌模式下可以穿过分身蛇）
+    if (gameState.cloneActive && gameState.cloneSnake && !gameState.shieldActive && !gameState.invincibleActive) {
+        for (let i = 0; i < gameState.cloneSnake.length; i++) {
+            if (head.x === gameState.cloneSnake[i].x && head.y === gameState.cloneSnake[i].y) {
+                // console.log('Collision with clone snake at:', head.x, head.y);
+                return 'clone';
+            }
+        }
+    }
+    
+    // 检查障碍物碰撞（幽灵模式或无敌模式下可以穿过障碍物）
+    if (!gameState.ghostActive && !gameState.invincibleActive) {
         for (const obstacle of gameState.obstacles) {
             if (head.x === obstacle.x && head.y === obstacle.y) {
-                return true;
+                return 'obstacle';
             }
         }
     }
@@ -1306,14 +1501,74 @@ function checkCollision(head) {
     return false;
 }
 
+// 分身蛇移动
+function moveCloneSnake() {
+    if (!gameState.cloneActive || !gameState.cloneSnake || gameState.cloneSnake.length === 0) {
+        return;
+    }
+    
+    // 获取分身蛇头
+    const cloneHead = { ...gameState.cloneSnake[0] };
+    
+    // 分身蛇随机移动（有一定概率跟随主蛇方向）
+    const followChance = 0.3; // 30% 概率跟随主蛇方向
+    let direction;
+    
+    if (Math.random() < followChance && gameState.snake.length > 0) {
+        // 跟随主蛇方向
+        direction = gameState.direction;
+    } else {
+        // 随机选择方向
+        const directions = ['up', 'down', 'left', 'right'];
+        direction = directions[Math.floor(Math.random() * directions.length)];
+    }
+    
+    // 根据方向移动分身蛇头
+    switch (direction) {
+        case 'up':
+            cloneHead.y -= 1;
+            break;
+        case 'down':
+            cloneHead.y += 1;
+            break;
+        case 'left':
+            cloneHead.x -= 1;
+            break;
+        case 'right':
+            cloneHead.x += 1;
+            break;
+    }
+    
+    // 分身蛇穿墙处理
+    const gridWidth = canvas.width / CONFIG.GRID_SIZE;
+    const gridHeight = canvas.height / CONFIG.GRID_SIZE;
+    
+    if (cloneHead.x < 0) cloneHead.x = gridWidth - 1;
+    if (cloneHead.x >= gridWidth) cloneHead.x = 0;
+    if (cloneHead.y < 0) cloneHead.y = gridHeight - 1;
+    if (cloneHead.y >= gridHeight) cloneHead.y = 0;
+    
+    // 添加新的分身蛇头
+    gameState.cloneSnake.unshift(cloneHead);
+    
+    // 分身蛇不会吃食物，所以总是移除蛇尾
+    gameState.cloneSnake.pop();
+}
+
 // 游戏结束
-function gameOver() {
+function gameOver(collisionType = 'unknown') {
     gameState.isRunning = false;
     gameState.gameOver = true;
     
     if (gameState.gameLoop) {
         clearInterval(gameState.gameLoop);
         gameState.gameLoop = null;
+    }
+    
+    // 清除分身蛇定时器
+    if (gameState.cloneTimer) {
+        clearInterval(gameState.cloneTimer);
+        gameState.cloneTimer = null;
     }
     
     // 计算游戏时间
@@ -1338,7 +1593,35 @@ function gameOver() {
     // 更新统计显示
     updateStatsDisplay();
     
-    let message = `最终得分: ${gameState.score}<br>蛇的长度: ${gameState.snake.length}<br>游戏时间: ${gameState.gameTime}秒<br>特殊食物: ${gameState.specialFoodEaten}个<br>当前难度最高分: ${highScore}`;
+    // 根据碰撞类型生成死亡原因消息
+    let deathReason = '';
+    switch (collisionType) {
+        case 'wall_left':
+            deathReason = '撞到了左边墙壁';
+            break;
+        case 'wall_right':
+            deathReason = '撞到了右边墙壁';
+            break;
+        case 'wall_top':
+            deathReason = '撞到了顶部墙壁';
+            break;
+        case 'wall_bottom':
+            deathReason = '撞到了底部墙壁';
+            break;
+        case 'self':
+            deathReason = '撞到了自己的身体';
+            break;
+        case 'clone':
+            deathReason = '撞到了分身蛇';
+            break;
+        case 'obstacle':
+            deathReason = '撞到了障碍物';
+            break;
+        default:
+            deathReason = '未知原因';
+    }
+    
+    let message = `死亡原因: ${deathReason}<br>最终得分: ${gameState.score}<br>蛇的长度: ${gameState.snake.length}<br>游戏时间: ${gameState.gameTime}秒<br>特殊食物: ${gameState.specialFoodEaten}个<br>当前难度最高分: ${highScore}`;
     
     if (isNewRecord) {
         message += `<br><span style="color: #ffd700; font-weight: bold;">🎉 恭喜！创造了新的最高分记录！</span>`;
@@ -1541,6 +1824,14 @@ resetHighscoreBtn.addEventListener('click', resetHighScores);
 resetStatsBtn.addEventListener('click', resetGameStats);
 themeToggleBtn.addEventListener('click', toggleTheme);
 
+// 游戏结束覆盖层点击事件 - 点击后重新开始游戏
+gameOverlay.addEventListener('click', function() {
+    if (gameState.gameOver) {
+        resetGame();
+        hideOverlay();
+    }
+});
+
 // 难度选择事件
 difficultySelect.addEventListener('change', function() {
     const difficulty = this.value;
@@ -1560,8 +1851,9 @@ difficultySelect.addEventListener('change', function() {
 function applyFoodEffect(effect) {
     switch (effect) {
         case 'doubleScore':
-            // 双倍分数效果
-            gameState.score += gameState.difficultyConfig.scorePerFood;
+            // 双倍分数效果（应用分数倍增效果）
+            const doubleScore = gameState.difficultyConfig.scorePerFood * gameState.scoreMultiplier;
+            gameState.score += doubleScore;
             showEffectMessage('双倍分数！');
             break;
             
@@ -1717,6 +2009,109 @@ function applyPowerUpEffect(powerUpType) {
             setTimeout(() => {
                 gameState.portalActive = false;
                 showEffectMessage('传送门效果结束！');
+            }, powerUp.duration);
+            break;
+            
+        case 'timeStop':
+            // 时间停止效果
+            gameState.timeStopActive = true;
+            const originalGameLoop = gameState.gameLoop;
+            
+            // 暂停游戏循环
+            if (gameState.gameLoop) {
+                clearInterval(gameState.gameLoop);
+                gameState.gameLoop = null;
+            }
+            
+            setTimeout(() => {
+                gameState.timeStopActive = false;
+                // 恢复游戏循环
+                if (!gameState.gameLoop && !gameState.gameOver) {
+                    gameState.gameLoop = setInterval(() => {
+                        update();
+                        draw();
+                    }, gameState.speed);
+                }
+                showEffectMessage('时间停止结束！');
+            }, powerUp.duration);
+            break;
+            
+        case 'clone':
+            // 分身效果
+            gameState.cloneActive = true;
+            // 创建分身蛇头（避免与主蛇重叠）
+            let cloneHeadX = gameState.snake[0].x;
+            let cloneHeadY = gameState.snake[0].y;
+            
+            // 尝试找到一个不重叠的位置
+            const directions = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
+            ];
+            
+            for (const dir of directions) {
+                const newX = gameState.snake[0].x + dir.x;
+                const newY = gameState.snake[0].y + dir.y;
+                
+                // 检查是否与主蛇重叠
+                let overlap = false;
+                for (const segment of gameState.snake) {
+                    if (segment.x === newX && segment.y === newY) {
+                        overlap = true;
+                        break;
+                    }
+                }
+                
+                if (!overlap) {
+                    cloneHeadX = newX;
+                    cloneHeadY = newY;
+                    break;
+                }
+            }
+            
+            const cloneHead = {
+                x: cloneHeadX,
+                y: cloneHeadY,
+                direction: gameState.direction
+            };
+            gameState.cloneSnake = [cloneHead];
+            
+            // 分身蛇移动定时器
+            gameState.cloneTimer = setInterval(() => {
+                if (gameState.cloneActive && gameState.cloneSnake) {
+                    moveCloneSnake();
+                }
+            }, gameState.speed);
+            
+            setTimeout(() => {
+                gameState.cloneActive = false;
+                gameState.cloneSnake = null;
+                if (gameState.cloneTimer) {
+                    clearInterval(gameState.cloneTimer);
+                    gameState.cloneTimer = null;
+                }
+                showEffectMessage('分身效果结束！');
+            }, powerUp.duration);
+            break;
+            
+        case 'scoreMultiplier':
+            // 分数倍增效果
+            gameState.scoreMultiplierActive = true;
+            gameState.scoreMultiplier = 2; // 分数翻倍
+            
+            setTimeout(() => {
+                gameState.scoreMultiplierActive = false;
+                gameState.scoreMultiplier = 1;
+                showEffectMessage('分数倍增结束！');
+            }, powerUp.duration);
+            break;
+            
+        case 'invincible':
+            // 无敌效果
+            gameState.invincibleActive = true;
+            
+            setTimeout(() => {
+                gameState.invincibleActive = false;
+                showEffectMessage('无敌效果结束！');
             }, powerUp.duration);
             break;
     }

@@ -113,10 +113,12 @@ export class FileReadTool extends BaseTool<ReadInput> {
       }
       
       // 👇 缓存文件内容（只缓存未截断的完整内容）
-      if (result && !truncated) {
-        const messageId = `read_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        fileCache.set(input.file_path, result, messageId);
-      }
+      if (content && !truncated) {
+  const messageId = `read_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  console.log(`[DEBUG] 准备写入磁盘缓存: ${input.file_path}, 内容长度: ${content.length}`);
+  await fileCache.set(input.file_path, content, messageId);
+  console.log(`[DEBUG] 磁盘缓存写入完成: ${input.file_path}`);
+}
       
       return {
         success: true,

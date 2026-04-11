@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试死亡原因</title>
+    <style>
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 21, 37, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 15px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-overlay" id="game-overlay" style="display:none;">
+        <div>
+            <h2 id="overlay-title">标题</h2>
+            <p id="overlay-text">内容</p>
+        </div>
+    </div>
+    
+    <button onclick="testGameOver()">测试游戏结束</button>
+    
+    <script>
+        const overlayTitle = document.getElementById("overlay-title");
+        const overlayText = document.getElementById("overlay-text");
+        const gameOverlay = document.getElementById("game-overlay");
+        
+        function showOverlay(title, text) {
+            overlayTitle.textContent = title;
+            overlayText.innerHTML = text;
+            gameOverlay.style.display = "flex";
+        }
+        
+        function testGameOver() {
+            const collisionType = "clone";
+            const gameState = {
+                score: 150,
+                snake: { length: 12 },
+                gameTime: 45,
+                specialFoodEaten: 3
+            };
+            const highScore = 200;
+            const isNewRecord = false;
+            
+            let deathReason = "撞到了分身蛇";
+            let message = `死亡原因: ${deathReason}<br>最终得分: ${gameState.score}<br>蛇的长度: ${gameState.snake.length}<br>游戏时间: ${gameState.gameTime}秒<br>特殊食物: ${gameState.specialFoodEaten}个<br>当前难度最高分: ${highScore}`;
+            
+            if (isNewRecord) {
+                message += `<br><span style="color: #ffd700; font-weight: bold;">🎉 恭喜！创造了新的最高分记录！</span>`;
+            }
+            
+            showOverlay("游戏结束", message);
+        }
+    </script>
+</body>
+</html>

@@ -13,8 +13,15 @@
       "reason": "用户已记住: bash",
       "createdAt": 1775830939047,
       "expiresAt": 1776435739047
+    },
+    {
+      "tool": "write_file",
+      "mode": "allow",
+      "reason": "用户已记住: write_file",
+      "createdAt": 1775833921637,
+      "expiresAt": 1776438721637
     }
   ],
   "sessionId": "session_1775830114059_oapnxx",
-  "updatedAt": 1775830939047
+  "updatedAt": 1775833921637
 }

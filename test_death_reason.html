@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试死亡原因</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>测试死亡原因显示</h1>
+        <p>点击按钮模拟不同的死亡原因：</p>
+        
+        <button onclick="testDeathReason('wall_left')">测试撞左边墙</button>
+        <button onclick="testDeathReason('wall_right')">测试撞右边墙</button>
+        <button onclick="testDeathReason('wall_top')">测试撞顶部墙</button>
+        <button onclick="testDeathReason('wall_bottom')">测试撞底部墙</button>
+        <button onclick="testDeathReason('self')">测试撞自己身体</button>
+        <button onclick="testDeathReason('clone')">测试撞分身蛇</button>
+        <button onclick="testDeathReason('obstacle')">测试撞障碍物</button>
+        <button onclick="testDeathReason('unknown')">测试未知原因</button>
+        
+        <div id="result">
+            <h3>死亡原因显示：</h3>
+            <p id="death-reason">等待测试...</p>
+        </div>
+    </div>
+
+    <script>
+        // 模拟gameOver函数
+        function gameOver(collisionType = 'unknown') {
+            let deathReason = '';
+            switch (collisionType) {
+                case 'wall_left':
+                    deathReason = '撞到了左边墙壁';
+                    break;
+                case 'wall_right':
+                    deathReason = '撞到了右边墙壁';
+                    break;
+                case 'wall_top':
+                    deathReason = '撞到了顶部墙壁';
+                    break;
+                case 'wall_bottom':
+                    deathReason = '撞到了底部墙壁';
+                    break;
+                case 'self':
+                    deathReason = '撞到了自己的身体';
+                    break;
+                case 'clone':
+                    deathReason = '撞到了分身蛇';
+                    break;
+                case 'obstacle':
+                    deathReason = '撞到了障碍物';
+                    break;
+                default:
+                    deathReason = '未知原因';
+            }
+            
+            return deathReason;
+        }
+        
+        function testDeathReason(type) {
+            const reason = gameOver(type);
+            document.getElementById('death-reason').innerHTML = 
+                `<strong>碰撞类型：</strong>${type}<br>
+                 <strong>死亡原因：</strong>${reason}<br>
+                 <strong>完整消息：</strong>死亡原因: ${reason}<br>最终得分: 100<br>蛇的长度: 5<br>游戏时间: 30秒<br>特殊食物: 2个<br>当前难度最高分: 500`;
+        }
+    </script>
+</body>
+</html>

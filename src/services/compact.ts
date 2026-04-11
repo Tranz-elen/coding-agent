@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs/promises';
 import { LLMClient } from '../api/client.js';
 import { Message } from '../agent/types.js';
 import { loadConfig } from '../utils/config.js';
@@ -50,6 +52,9 @@ export class ContextCompressor {
   
   // 执行压缩
   async compress(messages: Message[]): Promise<Message[]> {
+  const beforeSize = JSON.stringify(messages).length;
+  console.log(`[DEBUG] 压缩前大小: ${beforeSize} 字符`);
+  
   const toCompress = messages.slice(0, -this.KEEP_RECENT);
   let recent = messages.slice(-this.KEEP_RECENT);
   
@@ -64,45 +69,27 @@ export class ContextCompressor {
       }
     }
   }
-
-  // 提取最近消息中涉及的文件路径
-  const recentFilePaths = new Set<string>();
-  for (const msg of recent) {
-  if (msg.role === 'tool' && typeof msg.content === 'object' && msg.content !== null) {
-    const toolContent = msg.content as { tool_use_id: string; content: string; is_error?: boolean };
-    const contentText = toolContent.content;
-    const match = contentText.match(/(?:成功写入|成功读取|文件路径[：:])\s*['"]?([^'"\n]+)['"]?/);
-    if (match) {
-      recentFilePaths.add(match[1]);
-    }
-  }
-}
   
   // 生成结构化摘要
-  const result = await this.generateStructuredSummary(toCompress);
+  const summaryResult = await this.generateStructuredSummary(toCompress);
   
-  // 👇 从缓存恢复文件内容（这里需要加上）
-  let fileContentSection = '';
-  for (const filePath of recentFilePaths) {
-    const cachedContent = fileCache.get(filePath);
-    if (cachedContent) {
-      const displayContent = cachedContent.length > 3000 
-        ? cachedContent.substring(0, 3000) + '\n... (文件过长，已截断)' 
-        : cachedContent;
-      fileContentSection += `\n\n## 📄 文件: ${filePath}\n\`\`\`\n${displayContent}\n\`\`\``;
-    }
-  }
-  
-  console.log(`✅ 压缩完成: 保留关键信息 + ${recentFilePaths.size} 个文件内容`);
-  
-  return [
+  const result: Message[] = [
     {
-      role: 'system',
-      content: this.formatSummary(result) + fileContentSection
-    },
+      role: 'system' as const,
+      content: this.formatSummary(summaryResult)
+    } as Message,
     ...recent
   ];
+  
+  const afterSize = JSON.stringify(result).length;
+  const reduction = beforeSize - afterSize;
+  const percent = ((reduction / beforeSize) * 100).toFixed(1);
+  console.log(`[DEBUG] 压缩后大小: ${afterSize} 字符，减少: ${reduction} 字符 (${percent}%)`);
+  console.log(`✅ 压缩完成: 保留关键信息 (文件内容已缓存，需要时可重新读取)`);
+  
+  return result;
 }
+  
   // 生成结构化摘要
   private async generateStructuredSummary(messages: Message[]): Promise<CompactResult> {
     const prompt = `请分析以下对话历史，按类别提取关键信息：

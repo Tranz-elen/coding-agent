@@ -8,6 +8,7 @@ import { contextCompressor } from '../services/compact.js';
 import { loadConfig } from '../utils/config.js'
 import { fileCache } from '../services/fileCache.js';
 
+
 export interface AgentConfig {
   maxIterations?: number;
   verbose?: boolean;
@@ -51,6 +52,8 @@ export class AgentLoop {
   if (askTool && askTool.setReadline) {
     askTool.setReadline(rlInstance);
   }
+  fileCache.cleanExpiredCache(7).catch(console.error);
+  fileCache.limitCacheSize(100).catch(console.error);
 }
   private async addSystemMessage() {
   const systemPrompt = `你是一个专业的编程助手。
