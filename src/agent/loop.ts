@@ -118,26 +118,64 @@ private async initSession(sessionId?: string): Promise<void> {
       return;
     }
     
-    // 如果没有完整会话，尝试加载摘要
+    // 尝试加载摘要
+    console.log(`[DEBUG] 尝试加载摘要: ${sessionId}`);
     const summary = await sessionSummary.loadSummary(sessionId);
+    console.log(`[DEBUG] 摘要加载结果: ${summary ? '成功' : '失败'}`);
+    
     if (summary) {
-      console.log(`📋 加载历史摘要: ${summary.sessionId.slice(-8)} (${new Date(summary.timestamp).toLocaleDateString()})`);
-      this.messages.push({
-        role: 'system',
-        content: `【上次会话摘要 - ${new Date(summary.timestamp).toLocaleString()}】\n\n${summary.summary}\n\n请继续之前的工作。`
-      });
-      this.sessionId = sessionId;
-      this.session = await sessionManager.createSession('恢复的会话', this.messages);
-      return;
+  console.log(`📋 加载历史摘要: ${summary.sessionId.slice(-8)} (${new Date(summary.timestamp).toLocaleDateString()})`);
+  
+  let enhancedContent = `【重要】以下是之前会话的摘要，你已经知道这些信息，不需要重新探索。\n\n`;
+  enhancedContent += `${summary.summary}\n\n`;
+  
+  // 添加已知文件
+  if (summary.usefulInfo?.files && summary.usefulInfo.files.length > 0) {
+    enhancedContent += `【已知文件】\n`;
+    for (const file of summary.usefulInfo.files) {
+      enhancedContent += `- ${file}\n`;
     }
+    enhancedContent += `\n`;
   }
+  
+  // 添加待办任务
+  if (summary.keyInfo?.pendingTasks && summary.keyInfo.pendingTasks.length > 0) {
+    enhancedContent += `【待办任务】\n`;
+    for (const task of summary.keyInfo.pendingTasks) {
+      enhancedContent += `- ${task}\n`;
+    }
+    enhancedContent += `\n`;
+  }
+  
+  // 添加已完成工作
+  if (summary.keyInfo?.completedWork && summary.keyInfo.completedWork.length > 0) {
+    enhancedContent += `【已完成工作】\n`;
+    for (const work of summary.keyInfo.completedWork.slice(0, 5)) {
+      enhancedContent += `- ${work}\n`;
+    }
+    enhancedContent += `\n`;
+  }
+  
+  enhancedContent += `【直接回答用户问题，不要执行 dir、grep、read_file 等探索命令。】`;
+  
+  // 👇 push 放在这里，在 enhancedContent 定义之后
+  this.messages.push({
+    role: 'system',
+    content: enhancedContent
+  });
+  
+  this.sessionId = sessionId;
+  this.session = await sessionManager.createSession('恢复的会话', this.messages);
+  return;
+}
+} 
   
   // 创建新会话
   this.session = await sessionManager.createSession('新会话', []);
   this.sessionId = this.session.id;
   await this.addSystemMessage();
   console.log(`📝 新会话: ${this.sessionId}`);
-}
+}  // 👈 initSession 在这里结束
 
 // 保存当前会话
 private async saveCurrentSession(): Promise<void> {
