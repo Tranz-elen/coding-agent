@@ -2,17 +2,17 @@
 
 # 🤖 Coding Agent
 
-[![GitHub stars](https://img.shields.io/github/stars/tranz-elen/coding-agent?style=for-the-badge&logo=github&color=yellow)](https://github.com/tranz-elen/coding-agent/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/tranz-elen/coding-agent?style=for-the-badge&logo=github&color=blue)](https://github.com/tranz-elen/coding-agent/network)
-[![GitHub issues](https://img.shields.io/github/issues/tranz-elen/coding-agent?style=for-the-badge&logo=github&color=red)](https://github.com/tranz-elen/coding-agent/issues)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge&logo=opensourceinitiative)](LICENSE)
+[!\[GitHub stars\](https://img.shields.io/github/stars/tranz-elen/coding-agent?style=for-the-badge\&logo=github\&color=yellow null)](https://github.com/tranz-elen/coding-agent/stargazers)
+[!\[GitHub forks\](https://img.shields.io/github/forks/tranz-elen/coding-agent?style=for-the-badge\&logo=github\&color=blue null)](https://github.com/tranz-elen/coding-agent/network)
+[!\[GitHub issues\](https://img.shields.io/github/issues/tranz-elen/coding-agent?style=for-the-badge\&logo=github\&color=red null)](https://github.com/tranz-elen/coding-agent/issues)
+[!\[License\](https://img.shields.io/badge/License-MIT-green?style=for-the-badge\&logo=opensourceinitiative null)](LICENSE)
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js)](https://nodejs.org/)
-[![DeepSeek](https://img.shields.io/badge/DeepSeek-API-purple?style=for-the-badge&logo=deepseek)](https://deepseek.com/)
+[!\[TypeScript\](https://img.shields.io/badge/TypeScript-5.3-blue?style=for-the-badge\&logo=typescript null)](https://www.typescriptlang.org/)
+[!\[Node.js\](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge\&logo=node.js null)](https://nodejs.org/)
+[!\[DeepSeek\](https://img.shields.io/badge/DeepSeek-API-purple?style=for-the-badge\&logo=deepseek null)](https://deepseek.com/)
 
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github)](https://github.com/tranz-elen/coding-agent/pulls)
-[![Made with Love](https://img.shields.io/badge/Made%20with-Love-red?style=for-the-badge)](https://github.com/tranz-elen/coding-agent)
+[!\[PRs Welcome\](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge\&logo=github null)](https://github.com/tranz-elen/coding-agent/pulls)
+[!\[Made with Love\](https://img.shields.io/badge/Made%20with-Love-red?style=for-the-badge null)](https://github.com/tranz-elen/coding-agent)
 
 </div>
 
@@ -22,27 +22,35 @@
 
 ## ✨ 功能特性
 
-| 功能             | 说明                       |
-| -------------- | ------------------------ |
-| 🤖 核心 Agent 循环 | 自动调用 LLM 并执行工具           |
-| 📁 文件操作        | 读取、写入、编辑、搜索文件            |
-| 🔧 命令执行        | 执行系统命令（支持 Windows/Linux） |
-| 📋 任务管理        | Todo 列表，支持多步骤任务规划        |
-| 💾 会话持久化       | 自动保存对话历史，支持断点续传          |
-| 🔐 权限系统        | 危险操作需要用户确认               |
+| 功能             | 说明                          |
+| -------------- | --------------------------- |
+| 🤖 核心 Agent 循环 | 自动调用 LLM 并执行工具              |
+| 📁 文件操作        | 读取、写入、编辑、搜索文件               |
+| 🔧 命令执行        | 执行系统命令（支持 Windows/Linux）    |
+| 📋 任务管理        | Todo 列表，支持多步骤任务规划           |
+| 💾 会话持久化       | 自动保存对话历史，支持断点续传             |
+| 🔐 权限系统        | 危险操作需要用户确认                  |
+| 🗜️ 上下文压缩      | 自动压缩历史对话，节省 token（压缩率 80%+） |
+| 💿 文件缓存        | 缓存读取过的文件，加速重复访问             |
+| 🧹 缓存清理        | 自动清理过期缓存（7天）和限制大小（100MB）    |
+| 📊 命令历史        | 上下箭头查看历史命令                  |
+| ⚡ 错误重试         | API 调用失败自动重试                |
+| ⚙️ 配置文件        | 支持 `.codeagentrc.json` 配置   |
 
 ## 🛠️ 内置工具
 
-| 工具           | 功能     | 权限      |
-| ------------ | ------ | ------- |
-| `bash`       | 执行系统命令 | ⚠️ 需要确认 |
-| `read_file`  | 读取文件   | ✅ 自动允许  |
-| `write_file` | 写入文件   | ⚠️ 需要确认 |
-| `file_edit`  | 编辑文件   | ⚠️ 需要确认 |
-| `glob`       | 搜索文件   | ✅ 自动允许  |
-| `grep`       | 搜索内容   | ✅ 自动允许  |
-| `todo_write` | 任务管理   | ✅ 自动允许  |
-| `web_fetch`  | 网络请求   | ✅ 自动允许  |
+| 工具                  | 功能     | 权限      |
+| ------------------- | ------ | ------- |
+| `bash`              | 执行系统命令 | ⚠️ 需要确认 |
+| `read_file`         | 读取文件   | ✅ 自动允许  |
+| `write_file`        | 写入文件   | ⚠️ 需要确认 |
+| `file_edit`         | 编辑文件   | ⚠️ 需要确认 |
+| `glob`              | 搜索文件   | ✅ 自动允许  |
+| `grep`              | 搜索内容   | ✅ 自动允许  |
+| `todo_write`        | 任务管理   | ✅ 自动允许  |
+| `web_fetch`         | 网络请求   | ✅ 自动允许  |
+| `ask_user_question` | 询问用户   | ⚠️ 需要确认 |
+| `web_search`        | 网络搜索   | ⚠️ 需要确认 |
 
 ## 🚀 快速开始
 
@@ -53,28 +61,34 @@ npm install### 配置API key
 ```
 
 ### 配置 API Key
+
 创建 .env 文件：
+
 ```bash
 DEEPSEEK_API_KEY=your_api_key
 OPENAI_BASE_URL=https://api.deepseek.com/v1
 ```
 
 ### 运行
+
 ```bash
 npm run dev
 ```
+
 ## 📋命令列表
-| 命令          | 功能     |
-| ------------ | ------ |
-| `/sessions`    | 查看所有会话 |
-| `/save`        | 保存当前会话 |
-| `/resume <id>` | 切换会话 |
-| `/rename <名称>` | 重命名当前会话 |
-| `/session-info` | 查看会话详情 |
-| `/delete <id>`  | 删除会话 |
-| `exit`        | 退出会话 |
+
+| 命令              | 功能      |
+| --------------- | ------- |
+| `/sessions`     | 查看所有会话  |
+| `/save`         | 保存当前会话  |
+| `/resume <id>`  | 切换会话    |
+| `/rename <名称>`  | 重命名当前会话 |
+| `/session-info` | 查看会话详情  |
+| `/delete <id>`  | 删除会话    |
+| `exit`          | 退出会话    |
 
 ## 📁项目结构
+
 ```bash
 src/
 ├── agent/           # Agent 核心
@@ -95,11 +109,14 @@ src/
 ```
 
 ## 📚学习笔记
+
 本项目基于对 Claude Code 源码的学习，实现了其核心架构：
-- 核心循环 - while + needsFollowUp 模式
-- 工具系统 - 统一的 Tool 接口 + 能力标记
-- 权限控制 - 工具级别 + 命令级别双重检查
-- 会话管理 - JSON 文件持久化 + 会话隔离
+
+- **核心循环** - `while` + `needsFollowUp` 模式
+- **工具系统** - 统一的 `Tool` 接口 + 能力标记
+- **权限控制** - 工具级别 + 命令级别双重检查
+- **会话管理** - JSON 文件持久化 + 会话隔离
+- **分层存储** - L1-L3 架构，压缩率 80%+
 
 ## 📄 License
 

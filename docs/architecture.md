@@ -70,6 +70,44 @@ while (iteration < maxIterations) {
 - /rename <name> - 重命名
 - /delete <id> - 删除
 - /session-info - 详情
+- /chat-history - 查看对话历史
+- /history - 查看命令历史
+
+
+# 缓存系统
+
+## 文件缓存 (L2)
+
+用于缓存读取过的文件内容，避免重复读取磁盘。
+
+### 存储位置
+- `.cache/` 目录（项目根目录）
+- 文件名使用 Base64 哈希，避免路径冲突
+
+### 缓存策略
+- **内存缓存**：快速访问，最多 50 个文件
+- **磁盘缓存**：持久化存储，跨会话可用
+
+## 缓存清理机制
+
+### 清理策略
+| 策略 | 参数 | 说明 |
+|------|------|------|
+| 时间清理 | 7 天 | 删除超过 7 天未使用的缓存 |
+| 大小清理 | 100 MB | 超过限制时删除最旧的文件 |
+
+### 触发时机
+- Agent 启动时自动执行
+- 可手动调用 `fileCache.cleanExpiredCache()` 和 `fileCache.limitCacheSize()`
+
+### 代码示例
+```typescript
+// 清理过期缓存（7天）
+await fileCache.cleanExpiredCache(7);
+
+// 限制缓存大小（100MB）
+await fileCache.limitCacheSize(100);
+```
 
 # 参考
 
@@ -78,4 +116,3 @@ while (iteration < maxIterations) {
 - 工具系统：src/Tool.ts
 - 权限系统：src/utils/permissions/
 - 会话管理：src/state/sessionStore.ts
-
