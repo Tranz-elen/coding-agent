@@ -1,4 +1,4 @@
-// 绘制障碍物
+﻿// 绘制障碍物
 function drawObstacles() {
     for (const obstacle of gameState.obstacles) {
         const obstacleConfig = OBSTACLES[obstacle.type];

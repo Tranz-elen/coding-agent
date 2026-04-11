@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇大冒险 - H5版</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1><i class="fas fa-gamepad"></i> 贪吃蛇大冒险</h1>
+            <div class="game-info">
+                <div class="score-display">
+                    <span class="label"><i class="fas fa-star"></i> 分数:</span>
+                    <span id="score">0</span>
+                </div>
+                <div class="level-display">
+                    <span class="label"><i class="fas fa-flag"></i> 关卡:</span>
+                    <span id="level">1</span>
+                </div>
+                <div class="lives-display">
+                    <span class="label"><i class="fas fa-heart"></i> 生命:</span>
+                    <span id="lives">3</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="game-main">
+            <div class="game-area">
+                <canvas id="gameCanvas" width="800" height="600"></canvas>
+                
+                <div class="game-controls">
+                    <button id="startBtn" class="btn btn-primary">
+                        <i class="fas fa-play"></i> 开始游戏
+                    </button>
+                    <button id="pauseBtn" class="btn btn-secondary">
+                        <i class="fas fa-pause"></i> 暂停
+                    </button>
+                    <button id="restartBtn" class="btn btn-warning">
+                        <i class="fas fa-redo"></i> 重新开始
+                    </button>
+                    <button id="levelSelectBtn" class="btn btn-info">
+                        <i class="fas fa-layer-group"></i> 选择关卡
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-sidebar">
+                <div class="instructions">
+                    <h3><i class="fas fa-info-circle"></i> 游戏说明</h3>
+                    <ul>
+                        <li><i class="fas fa-arrow-up"></i> <strong>方向键</strong> 或 <strong>WASD</strong> 控制移动</li>
+                        <li><i class="fas fa-apple-alt"></i> 吃食物增加长度和分数</li>
+                        <li><i class="fas fa-skull-crossbones"></i> 避开障碍物和墙壁</li>
+                        <li><i class="fas fa-bolt"></i> 特殊障碍物有不同效果</li>
+                        <li><i class="fas fa-trophy"></i> 完成关卡解锁新内容</li>
+                    </ul>
+                </div>
+
+                <div class="obstacle-types">
+                    <h3><i class="fas fa-shield-alt"></i> 障碍物类型</h3>
+                    <div class="obstacle-list">
+                        <div class="obstacle-item wall">
+                            <span class="obstacle-icon">🧱</span>
+                            <span class="obstacle-name">墙壁</span>
+                        </div>
+                        <div class="obstacle-item spike">
+                            <span class="obstacle-icon">🔺</span>
+                            <span class="obstacle-name">尖刺</span>
+                        </div>
+                        <div class="obstacle-item moving">
+                            <span class="obstacle-icon">⚙️</span>
+                            <span class="obstacle-name">移动平台</span>
+                        </div>
+                        <div class="obstacle-item portal">
+                            <span class="obstacle-icon">🌀</span>
+                            <span class="obstacle-name">传送门</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mobile-controls">
+                    <h3><i class="fas fa-mobile-alt"></i> 移动端控制</h3>
+                    <div class="control-buttons">
+                        <button class="control-btn up" id="mobileUp">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <div class="middle-buttons">
+                            <button class="control-btn left" id="mobileLeft">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <button class="control-btn down" id="mobileDown">
+                                <i class="fas fa-arrow-down"></i>
+                            </button>
+                            <button class="control-btn right" id="mobileRight">
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="game-footer">
+            <p>基于障碍物系统架构设计 | H5 Canvas 实现 | 按空格键加速</p>
+            <div class="footer-links">
+                <button id="soundToggle" class="btn-link">
+                    <i class="fas fa-volume-up"></i> 音效
+                </button>
+                <button id="themeToggle" class="btn-link">
+                    <i class="fas fa-palette"></i> 主题
+                </button>
+                <button id="helpBtn" class="btn-link">
+                    <i class="fas fa-question-circle"></i> 帮助
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 游戏模态框 -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-skull"></i> 游戏结束</h2>
+            <p>最终分数: <span id="finalScore">0</span></p>
+            <p>最高分数: <span id="highScore">0</span></p>
+            <div class="modal-buttons">
+                <button id="playAgainBtn" class="btn btn-primary">
+                    <i class="fas fa-redo"></i> 再玩一次
+                </button>
+                <button id="backToMenuBtn" class="btn btn-secondary">
+                    <i class="fas fa-home"></i> 返回菜单
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关卡选择模态框 -->
+    <div id="levelSelectModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-layer-group"></i> 选择关卡</h2>
+            <div class="level-grid" id="levelGrid">
+                <!-- 关卡将通过JS动态生成 -->
+            </div>
+            <button id="closeLevelSelect" class="btn btn-secondary">
+                <i class="fas fa-times"></i> 关闭
+            </button>
+        </div>
+    </div>
+
+    <!-- 脚本文件 -->
+    <script src="js/main.js"></script>
+    <script src="js/snake.js"></script>
+    <script src="js/obstacle-system/Obstacle.js"></script>
+    <script src="js/obstacle-system/ObstacleManager.js"></script>
+    <script src="js/obstacle-system/BehaviorSystem.js"></script>
+    <script src="js/obstacle-system/VisualSystem.js"></script>
+    <script src="js/obstacle-system/AudioSystem.js"></script>
+    <script src="js/game-modes/BaseGameMode.js"></script>
+    <script src="js/ui/GameUI.js"></script>
+    <script src="js/utils/helpers.js"></script>
+</body>
+</html>

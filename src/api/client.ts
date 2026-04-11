@@ -29,7 +29,7 @@ export class LLMClient {
     
     this.config = {
       model: config?.model || 'deepseek-chat',
-      maxTokens: config?.maxTokens || 4096,
+      maxTokens: config?.maxTokens || 8192,
       temperature: config?.temperature || 0.7,
       baseURL: baseURL,
       apiKey: apiKey,
@@ -77,12 +77,19 @@ export class LLMClient {
         for (const toolCall of message.tool_calls) {
           const toolCallAny = toolCall as any;
           if (toolCallAny.function) {
+          try {
             toolUses.push({
               id: toolCallAny.id,
               name: toolCallAny.function.name,
               input: JSON.parse(toolCallAny.function.arguments)
             });
+          } catch (parseError) {
+            console.error(`[WARN] 解析工具参数失败: ${toolCallAny.function.name}`);
+            console.error(`[WARN] 原始参数: ${toolCallAny.function.arguments?.substring(0, 200)}`);
+            // 跳过这个工具调用，继续处理
+            continue;
           }
+        }
         }
       }
       

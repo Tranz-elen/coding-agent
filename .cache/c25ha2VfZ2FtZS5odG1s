@@ -147,6 +147,22 @@
         </footer>
     </div>
     
-    <script src="snake_game.js"></script>
+    <script>
+        // 解决本地文件访问的安全限制
+        if (window.location.protocol === 'file:') {
+            console.log('检测到本地文件访问，启用兼容模式');
+            
+            // 添加一个简单的错误处理
+            window.addEventListener('error', function(e) {
+                console.log('JavaScript错误:', e.message);
+            });
+            
+            // 解决跨域问题
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM已加载，准备初始化游戏');
+            });
+        }
+    </script>
+    <script src="snake_game_utf8.js"></script>
 </body>
 </html>

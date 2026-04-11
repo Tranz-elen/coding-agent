@@ -1,0 +1,382 @@
+// 贪吃蛇游戏 - 主入口文件
+class SnakeGame {
+    constructor() {
+        // 游戏状态
+        this.gameState = 'menu'; // menu, playing, paused, gameover
+        this.score = 0;
+        this.level = 1;
+        this.lives = 3;
+        this.gameSpeed = 150; // 毫秒
+        
+        // Canvas 相关
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.gridSize = 20; // 网格大小
+        this.gridWidth = Math.floor(this.canvas.width / this.gridSize);
+        this.gridHeight = Math.floor(this.canvas.height / this.gridSize);
+        
+        // 游戏对象
+        this.snake = null;
+        this.food = null;
+        this.obstacleManager = null;
+        
+        // 游戏循环
+        this.gameLoop = null;
+        this.lastUpdateTime = 0;
+        
+        // 初始化
+        this.init();
+    }
+    
+    init() {
+        console.log('贪吃蛇游戏初始化...');
+        
+        // 初始化游戏对象
+        this.snake = new Snake(this);
+        this.food = this.generateFood();
+        
+        // 初始化障碍物管理器
+        this.obstacleManager = new ObstacleManager(this);
+        
+        // 设置事件监听器
+        this.setupEventListeners();
+        
+        // 初始渲染
+        this.render();
+        
+        console.log('游戏初始化完成！');
+    }
+    
+    setupEventListeners() {
+        // 按钮事件
+        document.getElementById('startBtn').addEventListener('click', () => this.startGame());
+        document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
+        document.getElementById('restartBtn').addEventListener('click', () => this.restartGame());
+        
+        // 键盘控制
+        document.addEventListener('keydown', (e) => this.handleKeyPress(e));
+        
+        // 更新UI
+        this.updateUI();
+    }
+    
+    startGame() {
+        if (this.gameState === 'menu' || this.gameState === 'gameover') {
+            this.gameState = 'playing';
+            this.lastUpdateTime = Date.now();
+            this.gameLoop = setInterval(() => this.update(), this.gameSpeed);
+            
+            document.getElementById('startBtn').innerHTML = '<i class="fas fa-play"></i> 游戏中';
+            console.log('游戏开始！');
+        }
+    }
+    
+    togglePause() {
+        if (this.gameState === 'playing') {
+            this.gameState = 'paused';
+            clearInterval(this.gameLoop);
+            document.getElementById('pauseBtn').innerHTML = '<i class="fas fa-play"></i> 继续';
+        } else if (this.gameState === 'paused') {
+            this.gameState = 'playing';
+            this.lastUpdateTime = Date.now();
+            this.gameLoop = setInterval(() => this.update(), this.gameSpeed);
+            document.getElementById('pauseBtn').innerHTML = '<i class="fas fa-pause"></i> 暂停';
+        }
+    }
+    
+    restartGame() {
+        clearInterval(this.gameLoop);
+        
+        // 重置游戏状态
+        this.score = 0;
+        this.lives = 3;
+        this.gameState = 'menu';
+        
+        // 重新初始化游戏对象
+        this.snake = new Snake(this);
+        this.food = this.generateFood();
+        this.obstacleManager.clearAll();
+        
+        // 更新UI
+        this.updateUI();
+        this.render();
+        
+        document.getElementById('startBtn').innerHTML = '<i class="fas fa-play"></i> 开始游戏';
+        document.getElementById('pauseBtn').innerHTML = '<i class="fas fa-pause"></i> 暂停';
+        
+        console.log('游戏已重置');
+    }
+    
+    update() {
+        const currentTime = Date.now();
+        const deltaTime = currentTime - this.lastUpdateTime;
+        this.lastUpdateTime = currentTime;
+        
+        // 更新蛇的位置
+        this.snake.update();
+        
+        // 检查食物碰撞
+        if (this.checkFoodCollision()) {
+            this.snake.grow();
+            this.food = this.generateFood();
+            this.score += 10;
+            this.updateUI();
+        }
+        
+        // 检查障碍物碰撞
+        if (this.obstacleManager.checkCollisions(this.snake)) {
+            // 碰撞处理在 ObstacleManager.handleCollision 中完成
+        }
+        
+        // 检查边界碰撞
+        if (this.checkBoundaryCollision()) {
+            this.handleBoundaryCollision();
+        }
+        
+        // 检查自身碰撞
+        if (this.snake.checkSelfCollision()) {
+            this.handleSelfCollision();
+        }
+        
+        // 更新障碍物
+        this.obstacleManager.update(deltaTime);
+        
+        // 渲染游戏
+        this.render();
+    }
+    
+    render() {
+        // 清空画布
+        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 绘制网格背景
+        this.drawGrid();
+        
+        // 绘制食物
+        this.drawFood();
+        
+        // 绘制蛇
+        this.snake.draw(this.ctx);
+        
+        // 绘制障碍物
+        this.obstacleManager.draw(this.ctx);
+        
+        // 绘制游戏状态
+        this.drawGameState();
+    }
+    
+    drawGrid() {
+        this.ctx.strokeStyle = '#16213e';
+        this.ctx.lineWidth = 0.5;
+        
+        // 绘制垂直线
+        for (let x = 0; x <= this.canvas.width; x += this.gridSize) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+            this.ctx.stroke();
+        }
+        
+        // 绘制水平线
+        for (let y = 0; y <= this.canvas.height; y += this.gridSize) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+            this.ctx.stroke();
+        }
+    }
+    
+    drawFood() {
+        if (!this.food) return;
+        
+        this.ctx.fillStyle = '#ff4757';
+        this.ctx.beginPath();
+        this.ctx.arc(
+            this.food.x * this.gridSize + this.gridSize / 2,
+            this.food.y * this.gridSize + this.gridSize / 2,
+            this.gridSize / 2 - 2,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        
+        // 添加光泽效果
+        this.ctx.fillStyle = '#ff6b81';
+        this.ctx.beginPath();
+        this.ctx.arc(
+            this.food.x * this.gridSize + this.gridSize / 3,
+            this.food.y * this.gridSize + this.gridSize / 3,
+            this.gridSize / 6,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+    }
+    
+    drawGameState() {
+        if (this.gameState === 'paused') {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = 'bold 48px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('游戏暂停', this.canvas.width / 2, this.canvas.height / 2);
+            
+            this.ctx.font = '24px Arial';
+            this.ctx.fillText('按空格键继续', this.canvas.width / 2, this.canvas.height / 2 + 40);
+        } else if (this.gameState === 'gameover') {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.fillStyle = '#ff4757';
+            this.ctx.font = 'bold 48px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('游戏结束', this.canvas.width / 2, this.canvas.height / 2 - 40);
+            
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = '32px Arial';
+            this.ctx.fillText(`最终分数: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+            
+            this.ctx.font = '24px Arial';
+            this.ctx.fillText('按R键重新开始', this.canvas.width / 2, this.canvas.height / 2 + 70);
+        }
+    }
+    
+    generateFood() {
+        let foodX, foodY;
+        let validPosition = false;
+        
+        while (!validPosition) {
+            foodX = Math.floor(Math.random() * this.gridWidth);
+            foodY = Math.floor(Math.random() * this.gridHeight);
+            
+            // 检查是否与蛇身重叠
+            validPosition = !this.snake.segments.some(segment => 
+                segment.x === foodX && segment.y === foodY
+            );
+            
+            // 检查是否与障碍物重叠
+            if (validPosition && this.obstacleManager) {
+                validPosition = !this.obstacleManager.checkPosition(foodX, foodY);
+            }
+        }
+        
+        return { x: foodX, y: foodY };
+    }
+    
+    checkFoodCollision() {
+        if (!this.food || !this.snake.head) return false;
+        
+        return this.snake.head.x === this.food.x && this.snake.head.y === this.food.y;
+    }
+    
+    checkBoundaryCollision() {
+        if (!this.snake.head) return false;
+        
+        return (
+            this.snake.head.x < 0 ||
+            this.snake.head.x >= this.gridWidth ||
+            this.snake.head.y < 0 ||
+            this.snake.head.y >= this.gridHeight
+        );
+    }
+    
+    handleKeyPress(e) {
+        if (this.gameState !== 'playing') {
+            // 游戏未开始时的快捷键
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                this.startGame();
+            } else if (e.key === 'r' || e.key === 'R') {
+                this.restartGame();
+            }
+            return;
+        }
+        
+        // 游戏进行中的控制
+        switch(e.key) {
+            case 'ArrowUp':
+            case 'w':
+            case 'W':
+                if (this.snake.direction !== 'down') this.snake.direction = 'up';
+                break;
+            case 'ArrowDown':
+            case 's':
+            case 'S':
+                if (this.snake.direction !== 'up') this.snake.direction = 'down';
+                break;
+            case 'ArrowLeft':
+            case 'a':
+            case 'A':
+                if (this.snake.direction !== 'right') this.snake.direction = 'left';
+                break;
+            case 'ArrowRight':
+            case 'd':
+            case 'D':
+                if (this.snake.direction !== 'left') this.snake.direction = 'right';
+                break;
+            case ' ':
+            case 'Spacebar':
+                this.togglePause();
+                break;
+        }
+    }
+    
+    handleObstacleCollision() {
+        console.log('撞到障碍物！');
+        this.lives--;
+        this.updateUI();
+        
+        if (this.lives <= 0) {
+            this.gameOver();
+        } else {
+            // 重置蛇的位置
+            this.snake.reset();
+        }
+    }
+    
+    handleBoundaryCollision() {
+        console.log('撞到边界！');
+        this.lives--;
+        this.updateUI();
+        
+        if (this.lives <= 0) {
+            this.gameOver();
+        } else {
+            // 重置蛇的位置
+            this.snake.reset();
+        }
+    }
+    
+    handleSelfCollision() {
+        console.log('撞到自己！');
+        this.lives--;
+        this.updateUI();
+        
+        if (this.lives <= 0) {
+            this.gameOver();
+        } else {
+            // 重置蛇的位置
+            this.snake.reset();
+        }
+    }
+    
+    gameOver() {
+        this.gameState = 'gameover';
+        clearInterval(this.gameLoop);
+        console.log('游戏结束！最终分数:', this.score);
+        this.render();
+    }
+    
+    updateUI() {
+        document.getElementById('score').textContent = this.score;
+        document.getElementById('level').textContent = this.level;
+        document.getElementById('lives').textContent = this.lives;
+    }
+}
+
+// 页面加载完成后初始化游戏
+window.addEventListener('DOMContentLoaded', () => {
+    window.game = new SnakeGame();
+});

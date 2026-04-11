@@ -72,12 +72,14 @@ function drawObstacles() {
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
         
-        // 绘制完成后重置阴影
-        setTimeout(() => {
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
-        }, 0);
+        // 绘制障碍物主体（带阴影）
+        ctx.fillStyle = obstacleConfig.color;
+        ctx.fillRect(x, y, size, size);
+        
+        // 绘制完成后立即重置阴影
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
     }
 }
