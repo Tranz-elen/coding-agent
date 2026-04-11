@@ -2,17 +2,17 @@
 
 # 🤖 Coding Agent
 
-[!\[GitHub stars\](https://img.shields.io/github/stars/tranz-elen/coding-agent?style=for-the-badge\&logo=github\&color=yellow null)](https://github.com/tranz-elen/coding-agent/stargazers)
-[!\[GitHub forks\](https://img.shields.io/github/forks/tranz-elen/coding-agent?style=for-the-badge\&logo=github\&color=blue null)](https://github.com/tranz-elen/coding-agent/network)
-[!\[GitHub issues\](https://img.shields.io/github/issues/tranz-elen/coding-agent?style=for-the-badge\&logo=github\&color=red null)](https://github.com/tranz-elen/coding-agent/issues)
-[!\[License\](https://img.shields.io/badge/License-MIT-green?style=for-the-badge\&logo=opensourceinitiative null)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/tranz-elen/coding-agent?style=for-the-badge&logo=github&color=yellow)](https://github.com/tranz-elen/coding-agent/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/tranz-elen/coding-agent?style=for-the-badge&logo=github&color=blue)](https://github.com/tranz-elen/coding-agent/network)
+[![GitHub issues](https://img.shields.io/github/issues/tranz-elen/coding-agent?style=for-the-badge&logo=github&color=red)](https://github.com/tranz-elen/coding-agent/issues)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge&logo=opensourceinitiative)](LICENSE)
 
-[!\[TypeScript\](https://img.shields.io/badge/TypeScript-5.3-blue?style=for-the-badge\&logo=typescript null)](https://www.typescriptlang.org/)
-[!\[Node.js\](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge\&logo=node.js null)](https://nodejs.org/)
-[!\[DeepSeek\](https://img.shields.io/badge/DeepSeek-API-purple?style=for-the-badge\&logo=deepseek null)](https://deepseek.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js)](https://nodejs.org/)
+[![DeepSeek](https://img.shields.io/badge/DeepSeek-API-purple?style=for-the-badge&logo=deepseek)](https://deepseek.com/)
 
-[!\[PRs Welcome\](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge\&logo=github null)](https://github.com/tranz-elen/coding-agent/pulls)
-[!\[Made with Love\](https://img.shields.io/badge/Made%20with-Love-red?style=for-the-badge null)](https://github.com/tranz-elen/coding-agent)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github)](https://github.com/tranz-elen/coding-agent/pulls)
+[![Made with Love](https://img.shields.io/badge/Made%20with-Love-red?style=for-the-badge)](https://github.com/tranz-elen/coding-agent)
 
 </div>
 
