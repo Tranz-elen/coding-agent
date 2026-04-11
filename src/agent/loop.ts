@@ -8,6 +8,7 @@ import { contextCompressor } from '../services/compact.js';
 import { loadConfig } from '../utils/config.js'
 import { fileCache } from '../services/fileCache.js';
 import { sessionSummary } from '../services/sessionSummary.js';
+import { toolOutputCache } from '../services/toolOutputCache.js';
 
 
 export interface AgentConfig {
@@ -328,6 +329,10 @@ private async saveCurrentSession(): Promise<void> {
             
             try {
               const result = await tool.execute(toolUse.input);
+              // 👇 新增：缓存工具输出
+              if (result.success && result.message) {
+                toolOutputCache.set(toolUse.id, toolUse.name, result.message);
+              }
               this.messages.push({
                 role: 'tool',
                 content: {
@@ -339,8 +344,10 @@ private async saveCurrentSession(): Promise<void> {
               if (this.config.verbose) {
                 console.log(`   ✅ ${toolUse.name}: ${result.message.slice(0, 100)}`);
               }
-            } catch (error: any) {
-              this.messages.push({
+            } 
+              catch (error: any) {
+              toolOutputCache.set(toolUse.id, toolUse.name, `执行失败: ${error.message}`);
+                this.messages.push({
                 role: 'tool',
                 content: {
                   tool_use_id: toolUse.id,
@@ -351,6 +358,7 @@ private async saveCurrentSession(): Promise<void> {
               if (this.config.verbose) {
                 console.log(`   ❌ ${toolUse.name}: ${error.message}`);
               }
+
             }
             continue;
           }

@@ -2,6 +2,7 @@ import { LLMClient } from '../api/client.js';
 import { Message } from '../agent/types.js';
 import { loadConfig } from '../utils/config.js';
 import { sessionSummary } from './sessionSummary.js';
+import { toolOutputCache } from './toolOutputCache.js';
 
 const CONFIG = loadConfig();
 
@@ -70,7 +71,25 @@ export class ContextCompressor {
   
   // 生成结构化摘要
   const summaryResult = await this.generateStructuredSummary(toCompress);
-  
+  // 获取重要的工具输出
+const importantOutputs = toolOutputCache.getAllImportant();
+let outputsSection = '';
+if (importantOutputs.length > 0) {
+  outputsSection = '\n\n## 🔧 重要工具输出\n';
+  for (const out of importantOutputs) {
+    outputsSection += `\n### ${out.toolName}\n\`\`\`\n${out.output.substring(0, 500)}\n\`\`\``;
+  }
+  console.log(`📦 保留了 ${importantOutputs.length} 条重要工具输出`);
+}
+
+const result: Message[] = [
+  {
+    role: 'system' as const,
+    content: this.formatSummary(summaryResult) + outputsSection
+  } as Message,
+  ...recent
+];
+
   // 👇 保存摘要到磁盘（需要 sessionId）
   if (sessionId) {
     const summaryData = {
@@ -84,13 +103,6 @@ export class ContextCompressor {
     console.log(`📝 保存会话摘要: ${sessionId.slice(-8)}`);
   }
   
-  const result: Message[] = [
-    {
-      role: 'system' as const,
-      content: this.formatSummary(summaryResult)
-    } as Message,
-    ...recent
-  ];
   
   const afterSize = JSON.stringify(result).length;
   const reduction = beforeSize - afterSize;
