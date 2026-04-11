@@ -7,6 +7,7 @@ import readline from 'readline';
 import { contextCompressor } from '../services/compact.js';
 import { loadConfig } from '../utils/config.js'
 import { fileCache } from '../services/fileCache.js';
+import { sessionSummary } from '../services/sessionSummary.js';
 
 
 export interface AgentConfig {
@@ -105,7 +106,7 @@ ${this.toolRegistry.getAll().map(tool =>
 }
 
 private async initSession(sessionId?: string): Promise<void> {
-  console.log(`🔍 尝试恢复会话: ${sessionId}`);  // 添加调试
+  console.log(`🔍 尝试恢复会话: ${sessionId}`);
   if (sessionId) {
     // 恢复已有会话
     const session = await sessionManager.loadSession(sessionId);
@@ -116,8 +117,21 @@ private async initSession(sessionId?: string): Promise<void> {
       console.log(`📂 恢复会话: ${session.name} (${this.sessionId})`);
       return;
     }
+    
+    // 如果没有完整会话，尝试加载摘要
+    const summary = await sessionSummary.loadSummary(sessionId);
+    if (summary) {
+      console.log(`📋 加载历史摘要: ${summary.sessionId.slice(-8)} (${new Date(summary.timestamp).toLocaleDateString()})`);
+      this.messages.push({
+        role: 'system',
+        content: `【上次会话摘要 - ${new Date(summary.timestamp).toLocaleString()}】\n\n${summary.summary}\n\n请继续之前的工作。`
+      });
+      this.sessionId = sessionId;
+      this.session = await sessionManager.createSession('恢复的会话', this.messages);
+      return;
+    }
   }
-  // 只有没有 sessionId 或 session 不存在时才创建新会话
+  
   // 创建新会话
   this.session = await sessionManager.createSession('新会话', []);
   this.sessionId = this.session.id;
@@ -133,13 +147,6 @@ private async saveCurrentSession(): Promise<void> {
 }
   
   async processUserInput(userInput: string): Promise<string> {
-  // 👇 临时禁用压缩
-  //if (contextCompressor.needsCompression(this.messages)) {
-  //  console.log('\n📦 上下文过长，正在压缩...');
-  //  this.messages = await contextCompressor.compress(this.messages);
-  //  await this.saveCurrentSession();
-  //  console.log('✅ 压缩完成，继续处理...\n');
- // }
   
   this.messages.push({
     role: 'user',
@@ -150,16 +157,10 @@ private async saveCurrentSession(): Promise<void> {
   let finalAnswer = '';
   
   while (true) {
-     // 👇 临时禁用压缩
-    //if (contextCompressor.needsCompression(this.messages)) {
-    //  console.log('\n📦 上下文过长（循环中检测到），正在压缩...');
-    //  this.messages = await contextCompressor.compress(this.messages);
-    //  await this.saveCurrentSession();
-    //  console.log('✅ 压缩完成，继续处理...\n');
-    //}
+     
     if (contextCompressor.needsCompression(this.messages)) {
     console.log('\n📦 上下文过长，正在压缩...');
-    this.messages = await contextCompressor.compress(this.messages);
+    this.messages = await contextCompressor.compress(this.messages, this.sessionId || undefined);  // 👈 加上 sessionId
     await this.saveCurrentSession();
     console.log('✅ 压缩完成，继续处理...\n');
   }

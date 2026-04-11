@@ -1,0 +1,20 @@
+{
+  "rules": [
+    {
+      "tool": "bash",
+      "mode": "allow",
+      "reason": "用户已记住: bash",
+      "createdAt": 1775873568341,
+      "expiresAt": 1776478368341
+    },
+    {
+      "tool": "file_edit",
+      "mode": "allow",
+      "reason": "用户已记住: file_edit",
+      "createdAt": 1775873771093,
+      "expiresAt": 1776478571093
+    }
+  ],
+  "sessionId": "session_1775873366368_cyuwna",
+  "updatedAt": 1775873771094
+}

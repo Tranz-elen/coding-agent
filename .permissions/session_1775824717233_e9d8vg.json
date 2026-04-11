@@ -6,8 +6,22 @@
       "reason": "用户已记住: bash",
       "createdAt": 1775824743237,
       "expiresAt": 1776429543237
+    },
+    {
+      "tool": "write_file",
+      "mode": "allow",
+      "reason": "用户已记住: write_file",
+      "createdAt": 1775874071383,
+      "expiresAt": 1776478871383
+    },
+    {
+      "tool": "file_edit",
+      "mode": "allow",
+      "reason": "用户已记住: file_edit",
+      "createdAt": 1775874090109,
+      "expiresAt": 1776478890109
     }
   ],
   "sessionId": "session_1775824717233_e9d8vg",
-  "updatedAt": 1775824743237
+  "updatedAt": 1775874090109
 }

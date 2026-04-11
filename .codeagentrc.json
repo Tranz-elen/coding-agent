@@ -13,7 +13,7 @@
     "windowMs": 60000
   },
   "compress": {
-    "maxTokens": 20000,
+    "maxTokens": 50000,
     "keepRecent": 8
   }
 }

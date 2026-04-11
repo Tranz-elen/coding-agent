@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .warning {
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>贪吃蛇游戏功能测试</h1>
+        
+        <div class="test-section">
+            <h3>1. 文件完整性检查</h3>
+            <button class="test-button" onclick="testFileIntegrity()">检查文件</button>
+            <div id="file-test" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 游戏初始化测试</h3>
+            <button class="test-button" onclick="testGameInit()">测试初始化</button>
+            <div id="init-test" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 游戏控制测试</h3>
+            <button class="test-button" onclick="testGameControls()">测试控制</button>
+            <div id="control-test" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 碰撞检测测试</h3>
+            <button class="test-button" onclick="testCollision()">测试碰撞</button>
+            <div id="collision-test" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. 食物生成测试</h3>
+            <button class="test-button" onclick="testFoodGeneration()">测试食物</button>
+            <div id="food-test" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>6. 游戏状态测试</h3>
+            <button class="test-button" onclick="testGameStates()">测试状态</button>
+            <div id="state-test" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>7. 运行完整游戏测试</h3>
+            <button class="test-button" onclick="runFullTest()">运行完整测试</button>
+            <div id="full-test" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>8. 打开游戏页面</h3>
+            <button class="test-button" onclick="window.open('snake_game.html', '_blank')">打开游戏</button>
+            <p>点击按钮在新标签页中打开贪吃蛇游戏</p>
+        </div>
+    </div>
+    
+    <script>
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'test-result ' + type;
+            element.style.display = 'block';
+        }
+        
+        function testFileIntegrity() {
+            const files = ['snake_game.html', 'snake_game.css', 'snake_game.js'];
+            let missingFiles = [];
+            
+            files.forEach(file => {
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('HEAD', file, false);
+                    xhr.send();
+                    if (xhr.status === 404) {
+                        missingFiles.push(file);
+                    }
+                } catch (e) {
+                    missingFiles.push(file);
+                }
+            });
+            
+            if (missingFiles.length === 0) {
+                showResult('file-test', '✅ 所有文件都存在且可访问', 'success');
+            } else {
+                showResult('file-test', `❌ 缺少文件: ${missingFiles.join(', ')}`, 'error');
+            }
+        }
+        
+        function testGameInit() {
+            try {
+                // 检查游戏配置
+                if (typeof CONFIG === 'undefined') {
+                    showResult('init-test', '❌ CONFIG 未定义', 'error');
+                    return;
+                }
+                
+                // 检查必要的配置项
+                const requiredConfigs = ['GRID_SIZE', 'INITIAL_SPEED', 'SCORE_PER_FOOD'];
+                const missingConfigs = requiredConfigs.filter(config => !CONFIG[config]);
+                
+                if (missingConfigs.length > 0) {
+                    showResult('init-test', `❌ 缺少配置项: ${missingConfigs.join(', ')}`, 'error');
+                    return;
+                }
+                
+                // 检查游戏状态
+                if (typeof gameState === 'undefined') {
+                    showResult('init-test', '❌ gameState 未定义', 'error');
+                    return;
+                }
+                
+                // 检查DOM元素
+                const requiredElements = ['game-canvas', 'score', 'start-btn', 'pause-btn', 'reset-btn'];
+                const missingElements = requiredElements.filter(id => !document.getElementById(id));
+                
+                if (missingElements.length > 0) {
+                    showResult('init-test', `❌ 缺少DOM元素: ${missingElements.join(', ')}`, 'error');
+                    return;
+                }
+                
+                showResult('init-test', '✅ 游戏初始化检查通过', 'success');
+            } catch (error) {
+                showResult('init-test', `❌ 初始化测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testGameControls() {
+            try {
+                // 检查控制函数
+                const requiredFunctions = ['startGame', 'pauseGame', 'resetGame', 'handleKeyDown'];
+                const missingFunctions = requiredFunctions.filter(func => typeof window[func] !== 'function');
+                
+                if (missingFunctions.length > 0) {
+                    showResult('control-test', `❌ 缺少控制函数: ${missingFunctions.join(', ')}`, 'error');
+                    return;
+                }
+                
+                // 检查事件监听器
+                const buttons = ['start-btn', 'pause-btn', 'reset-btn'];
+                let hasListeners = true;
+                
+                buttons.forEach(id => {
+                    const btn = document.getElementById(id);
+                    if (btn && !btn.hasAttribute('onclick')) {
+                        // 检查是否有事件监听器
+                        const listeners = getEventListeners(btn);
+                        if (!listeners || !listeners.click || listeners.click.length === 0) {
+                            hasListeners = false;
+                        }
+                    }
+                });
+                
+                if (!hasListeners) {
+                    showResult('control-test', '⚠️ 部分按钮可能没有事件监听器', 'warning');
+                    return;
+                }
+                
+                showResult('control-test', '✅ 游戏控制检查通过', 'success');
+            } catch (error) {
+                showResult('control-test', `❌ 控制测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testCollision() {
+            try {
+                // 检查碰撞检测函数
+                if (typeof checkCollision !== 'function') {
+                    showResult('collision-test', '❌ checkCollision 函数未定义', 'error');
+                    return;
+                }
+                
+                // 检查游戏结束函数
+                if (typeof gameOver !== 'function') {
+                    showResult('collision-test', '❌ gameOver 函数未定义', 'error');
+                    return;
+                }
+                
+                showResult('collision-test', '✅ 碰撞检测函数存在', 'success');
+            } catch (error) {
+                showResult('collision-test', `❌ 碰撞测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testFoodGeneration() {
+            try {
+                // 检查食物生成函数
+                if (typeof generateFood !== 'function') {
+                    showResult('food-test', '❌ generateFood 函数未定义', 'error');
+                    return;
+                }
+                
+                // 检查绘制食物函数
+                if (typeof drawFood !== 'function') {
+                    showResult('food-test', '❌ drawFood 函数未定义', 'error');
+                    return;
+                }
+                
+                showResult('food-test', '✅ 食物系统检查通过', 'success');
+            } catch (error) {
+                showResult('food-test', `❌ 食物测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testGameStates() {
+            try {
+                // 检查游戏状态管理函数
+                const requiredStateFunctions = ['initGame', 'update', 'draw', 'updateUI'];
+                const missingFunctions = requiredStateFunctions.filter(func => typeof window[func] !== 'function');
+                
+                if (missingFunctions.length > 0) {
+                    showResult('state-test', `❌ 缺少状态函数: ${missingFunctions.join(', ')}`, 'error');
+                    return;
+                }
+                
+                // 检查覆盖层函数
+                if (typeof showOverlay !== 'function' || typeof hideOverlay !== 'function') {
+                    showResult('state-test', '❌ 覆盖层函数未定义', 'error');
+                    return;
+                }
+                
+                showResult('state-test', '✅ 游戏状态管理检查通过', 'success');
+            } catch (error) {
+                showResult('state-test', `❌ 状态测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function runFullTest() {
+            // 运行所有测试
+            const tests = [
+                testFileIntegrity,
+                testGameInit,
+                testGameControls,
+                testCollision,
+                testFoodGeneration,
+                testGameStates
+            ];
+            
+            let passed = 0;
+            let failed = 0;
+            let warnings = 0;
+            
+            tests.forEach((test, index) => {
+                try {
+                    test();
+                    // 等待结果更新
+                    setTimeout(() => {
+                        const resultElements = document.querySelectorAll('.test-result');
+                        if (resultElements[index]) {
+                            const result = resultElements[index].innerHTML;
+                            if (result.includes('✅')) passed++;
+                            else if (result.includes('⚠️')) warnings++;
+                            else if (result.includes('❌')) failed++;
+                        }
+                        
+                        // 如果是最后一个测试，显示总结
+                        if (index === tests.length - 1) {
+                            setTimeout(() => {
+                                const summary = `
+                                    <h4>测试总结</h4>
+                                    <p>✅ 通过: ${passed}</p>
+                                    <p>⚠️ 警告: ${warnings}</p>
+                                    <p>❌ 失败: ${failed}</p>
+                                    <p>📊 总分: ${passed}/${tests.length}</p>
+                                    ${failed === 0 ? '<p style="color: green;">🎉 所有基本功能测试通过！</p>' : '<p style="color: red;">⚠️ 需要修复一些问题</p>'}
+                                `;
+                                showResult('full-test', summary, failed === 0 ? 'success' : (warnings > 0 ? 'warning' : 'error'));
+                            }, 500);
+                        }
+                    }, 100);
+                } catch (error) {
+                    failed++;
+                }
+            });
+        }
+        
+        // 辅助函数来检查事件监听器
+        function getEventListeners(element) {
+            if (element._events) return element._events;
+            
+            const listeners = {};
+            const allEvents = ['click', 'keydown', 'touchstart', 'touchend'];
+            
+            allEvents.forEach(eventType => {
+                const eventListeners = [];
+                if (element.addEventListener) {
+                    // 这里简化处理，实际需要更复杂的检查
+                    listeners[eventType] = eventListeners;
+                }
+            });
+            
+            return listeners;
+        }
+    </script>
+</body>
+</html>

@@ -1,9 +1,7 @@
-import path from 'path';
-import fs from 'fs/promises';
 import { LLMClient } from '../api/client.js';
 import { Message } from '../agent/types.js';
 import { loadConfig } from '../utils/config.js';
-import { fileCache } from './fileCache.js';
+import { sessionSummary } from './sessionSummary.js';
 
 const CONFIG = loadConfig();
 
@@ -51,7 +49,7 @@ export class ContextCompressor {
   }
   
   // 执行压缩
-  async compress(messages: Message[]): Promise<Message[]> {
+  async compress(messages: Message[], sessionId?: string): Promise<Message[]> {
   const beforeSize = JSON.stringify(messages).length;
   console.log(`[DEBUG] 压缩前大小: ${beforeSize} 字符`);
   
@@ -72,6 +70,19 @@ export class ContextCompressor {
   
   // 生成结构化摘要
   const summaryResult = await this.generateStructuredSummary(toCompress);
+  
+  // 👇 保存摘要到磁盘（需要 sessionId）
+  if (sessionId) {
+    const summaryData = {
+      sessionId: sessionId,
+      summary: this.formatSummary(summaryResult),
+      keyInfo: summaryResult.keyInfo,
+      timestamp: Date.now(),
+      messageCount: messages.length
+    };
+    await sessionSummary.saveSummary(sessionId, summaryData);
+    console.log(`📝 保存会话摘要: ${sessionId.slice(-8)}`);
+  }
   
   const result: Message[] = [
     {
