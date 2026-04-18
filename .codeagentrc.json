@@ -1,9 +1,9 @@
 {
   "model": "deepseek-chat",
-  "maxTokens": 4096,
+  "maxTokens": 16384,
   "temperature": 0.7,
   "maxIterations": 50,
-  "verbose": false,
+  "verbose": true,
   "maxOutputSize": {
     "read_file": 5000,
     "bash": 10000
@@ -15,5 +15,36 @@
   "compress": {
     "maxTokens": 50000,
     "keepRecent": 8
+  },
+  "memory": {
+    "enabled": true,
+    "storage": {
+      "instanceRetentionDays": 30,
+      "featureRetentionDays": 90,
+      "symbolRetentionDays": 365
+    },
+    "cognitive": {
+      "importanceThreshold": 0.7,
+      "noveltyWeight": 0.25,
+      "relevanceWeight": 0.25,
+      "userSignalWeight": 0.25,
+      "entropyWeight": 0.25
+    },
+    "reasoning": {
+      "predictionConfidence": 0.8,
+      "maxPredictions": 5
+    },
+    "learning": {
+      "explorationRate": 0.1,
+      "learningRate": 0.01
+    }
+  },
+  "debug": {
+    "memory": true,
+    "storage": true,
+    "retrieve": true,
+    "embedding": true,
+    "feedback": false,
+    "correction": true
   }
 }

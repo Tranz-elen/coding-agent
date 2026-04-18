@@ -19,6 +19,38 @@ export interface AgentConfig {
     maxTokens: number;
     keepRecent: number;
   };
+  memory?: {
+    enabled: boolean;
+    storage?: {
+      instanceRetentionDays: number;
+      featureRetentionDays: number;
+      symbolRetentionDays: number;
+    };
+    cognitive?: {
+      importanceThreshold: number;
+      noveltyWeight: number;
+      relevanceWeight: number;
+      userSignalWeight: number;
+      entropyWeight: number;
+    };
+    reasoning?: {
+      predictionConfidence: number;
+      maxPredictions: number;
+    };
+    learning?: {
+      explorationRate: number;
+      learningRate: number;
+    };
+  };
+  // 👇 放在接口里面
+  debug?: {
+    memory?: boolean;
+    storage?: boolean;
+    retrieve?: boolean;
+    embedding?: boolean;
+    feedback?: boolean;
+    correction?: boolean;
+  };
 }
 
 const DEFAULT_CONFIG: AgentConfig = {
@@ -39,6 +71,7 @@ const DEFAULT_CONFIG: AgentConfig = {
     maxTokens: 50000,
     keepRecent: 8
   }
+  // debug 不需要默认值，不配置就默认 false
 };
 
 export function loadConfig(): AgentConfig {

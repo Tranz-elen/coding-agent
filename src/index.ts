@@ -2,6 +2,14 @@ import readline from 'readline';
 import { AgentLoop } from './agent/loop.js';
 import { RateLimiter } from './utils/rateLimit.js';
 import { loadConfig } from './utils/config.js';
+import { embeddingService } from './memory/utils/embedding.js';
+import { layeredStorage } from './memory/core/storage.js';
+import { feedbackProcessor } from './memory/core/feedback.js';
+import { taskMemory } from './memory/core/taskMemory.js';
+
+
+// 后台初始化，不阻塞启动
+embeddingService.initialize().catch(console.error);
 
 // 存储命令历史
 const history: string[] = [];
@@ -90,7 +98,179 @@ async function main() {
       rl.prompt();
       return;
     }
+
+    // 记忆管理命令
+if (input.startsWith('/memory')) {
+  const parts = input.split(' ');
+  const subCmd = parts[1];
+  
+  if (subCmd === 'stats') {
+    const stats = layeredStorage.getStats();
+    const avoidStats = feedbackProcessor.getAvoidZoneStats();
     
+    console.log('\n📊 记忆系统统计:');
+    console.log(`  实例层: ${stats.instances} 条`);
+    console.log(`  特征层: ${stats.features} 条`);
+    console.log(`  符号层: ${stats.symbols} 条`);
+    console.log(`  总计: ${stats.instances + stats.features + stats.symbols} 条`);
+    console.log(`  存储路径: ${stats.baseDir}`);
+    console.log(`\n⚡ 避雷区: ${avoidStats.total} 条`);
+  }
+  else if (subCmd === 'list') {
+    const limit = parseInt(parts[2]) || 10;
+    const memories = await layeredStorage.search('', limit);
+    
+    console.log(`\n📋 最近 ${memories.length} 条记忆:`);
+    memories.forEach((m, i) => {
+      const content = typeof m.content === 'string' 
+        ? m.content.substring(0, 40) 
+        : JSON.stringify(m.content).substring(0, 40);
+      const date = new Date(m.timestamp).toLocaleString();
+      console.log(`  ${i+1}. [${m.type}] ${content}...`);
+      console.log(`     ID: ${m.id.slice(-16)}, 显著性: ${m.significance.toFixed(2)}`);
+    });
+  }
+  else if (subCmd === 'search') {
+    const keyword = parts.slice(2).join(' ');
+    if (!keyword) {
+      console.log('❌ 请提供搜索关键词');
+    } else {
+      const memories = await layeredStorage.search(keyword, 20);
+      console.log(`\n🔍 搜索 "${keyword}" 找到 ${memories.length} 条记忆:`);
+      memories.forEach((m, i) => {
+        const content = JSON.stringify(m.content).substring(0, 50);
+        console.log(`  ${i+1}. [${m.type}] ${content}...`);
+        console.log(`     ID: ${m.id}`);
+      });
+    }
+  }
+  else if (subCmd === 'forget') {
+    const id = parts[2];
+    if (!id) {
+      console.log('❌ 请提供记忆 ID（可用 /memory list 查看）');
+    } else {
+      const success = await layeredStorage.forget(id);
+      console.log(success ? `✅ 记忆已删除` : `❌ 未找到记忆`);
+    }
+  }
+  else if (subCmd === 'clear') {
+    if (parts[2] === 'confirm') {
+      const result = await layeredStorage.clearAll();
+      console.log(`✅ 已清空 ${result.deleted} 条记忆`);
+    } else {
+      console.log('\n⚠️ 确认清空所有记忆？此操作不可恢复！');
+      console.log('   输入 /memory clear confirm 确认');
+    }
+  }
+  else {
+    console.log('\n📖 记忆管理命令:');
+    console.log('  /memory stats        - 查看统计');
+    console.log('  /memory list [N]      - 列出最近 N 条记忆（默认10）');
+    console.log('  /memory search <关键词> - 搜索记忆');
+    console.log('  /memory forget <ID>   - 删除指定记忆');
+    console.log('  /memory clear         - 清空所有记忆');
+  }
+  return;
+}
+
+// 任务管理命令
+if (input.startsWith('/task')) {
+  const parts = input.split(/\s+/);
+  const subCmd = parts[1];
+  
+  if (subCmd === 'list') {
+    const tasks = taskMemory.listTasks();
+    if (tasks.length === 0) {
+      console.log('\n⭕ 暂无任务');
+    } else {
+      console.log('\n📋 任务列表:');
+      tasks.forEach(t => {
+        const statusIcon = t.status === 'active' ? '🎯' : 
+                          t.status === 'completed' ? '✅' : 
+                          t.status === 'cancelled' ? '❌' : '⭕';
+        const progress = `${t.currentStepIndex}/${t.steps.length}`;
+        console.log(`  ${statusIcon} [${t.id.slice(-8)}] ${t.title} (${progress})`);
+      });
+    }
+  }
+  else if (subCmd === 'current') {
+    const current = taskMemory.getCurrentTask();
+    if (current) {
+      console.log(`\n🎯 当前任务: ${current.title}`);
+      console.log(`   状态: ${current.status}`);
+      console.log(`   进度: ${current.currentStepIndex}/${current.steps.length}`);
+      console.log(`\n   步骤:`);
+      current.steps.forEach((s, i) => {
+        const icon = i < current.currentStepIndex ? '✅' : 
+                     i === current.currentStepIndex ? '🔄' : '⭕';
+        const instanceTag = s.instanceId ? '📖' : '✨';
+        console.log(`     ${icon} ${i+1}. ${s.content} ${instanceTag}`);
+      });
+    } else {
+      console.log('\n⭕ 没有活跃任务');
+    }
+  }
+  else if (subCmd === 'activate') {
+    const taskId = parts[2];
+    if (!taskId) {
+      console.log('❌ 请提供任务ID（可用 /task list 查看）');
+    } else {
+      const fullTask = Array.from(taskMemory.listTasks()).find(t => t.id.endsWith(taskId));
+      if (fullTask && await taskMemory.activateTask(fullTask.id)) {
+        console.log(`✅ 任务已激活: ${fullTask.title}`);
+      } else {
+        console.log(`❌ 任务不存在`);
+      }
+    }
+  }
+  else if (subCmd === 'next') {
+    const result = await taskMemory.completeCurrentStep();
+    if (result) {
+      console.log(`✅ 步骤已完成: ${result.step.content}`);
+      if (result.isComplete) {
+        console.log(`🎉 任务 "${result.task.title}" 全部完成！`);
+      } else {
+        const nextStep = result.task.steps[result.task.currentStepIndex];
+        console.log(`🔄 下一步: ${nextStep.content}`);
+      }
+    } else {
+      console.log('⭕ 没有活跃任务');
+    }
+  }
+  else if (subCmd === 'delete') {
+    const taskId = parts[2];
+    if (!taskId) {
+      console.log('❌ 请提供任务ID');
+    } else {
+      const fullTask = Array.from(taskMemory.listTasks()).find(t => t.id.endsWith(taskId));
+      if (fullTask && await taskMemory.deleteTask(fullTask.id)) {
+        console.log(`✅ 任务已删除: ${fullTask.title}`);
+      } else {
+        console.log(`❌ 任务不存在`);
+      }
+    }
+  }
+  else if (subCmd === 'clear') {
+    if (parts[2] === 'confirm') {
+      const count = await taskMemory.clearAll();
+      console.log(`✅ 已清空 ${count} 个任务`);
+    } else {
+      console.log('\n⚠️ 确认清空所有任务？');
+      console.log('   输入 /task clear confirm 确认');
+    }
+  }
+  else {
+    console.log('\n📖 任务管理命令:');
+    console.log('  /task list            - 列出所有任务');
+    console.log('  /task current         - 查看当前任务详情');
+    console.log('  /task activate <ID>   - 激活任务（支持简写ID）');
+    console.log('  /task next            - 完成当前步骤，进入下一步');
+    console.log('  /task delete <ID>     - 删除任务');
+    console.log('  /task clear           - 清空所有任务');
+  }
+  return;
+}
+
     if (input === '/save') {
       await agent.saveSession();
       rl.prompt();
@@ -197,5 +377,7 @@ async function main() {
     process.exit(0);
   });
 }
+
+
 
 main().catch(console.error);
